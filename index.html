@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FintechCasinoX | Luxury Digital Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Open+Sans:wght@300;400;600&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Open Sans', sans-serif;
+        background-color: #050505; /* Pitch Black */
+        color: #FFFFFF;
+      }
+      h1, h2, h3, h4, h5, h6, .font-heading {
+        font-family: 'Montserrat', sans-serif;
+      }
+      .font-casino {
+        font-family: 'Cinzel', serif;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0B0B0C; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333; 
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #D4C28A; 
+      }
+      
+      /* Utilities */
+      .glass-panel {
+        background: rgba(20, 20, 23, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      }
+
+      .neon-text-gold {
+        text-shadow: 0 0 10px rgba(212, 194, 138, 0.5), 0 0 20px rgba(212, 194, 138, 0.3);
+      }
+      
+      /* Animations */
+      @keyframes spin-wheel {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(1440deg); } /* 4 spins */
+      }
+      .animate-spin-wheel {
+        animation: spin-wheel 3s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+      }
+
+      @keyframes deal-card {
+        0% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+      .animate-deal {
+        animation: deal-card 0.5s ease-out forwards;
+      }
+
+      @keyframes glow-pulse {
+        0%, 100% { box-shadow: 0 0 5px #D4C28A; }
+        50% { box-shadow: 0 0 20px #D4C28A, 0 0 10px #FFF; }
+      }
+      .animate-glow {
+        animation: glow-pulse 2s infinite;
+      }
+
+      @keyframes jackpot-bounce {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+      .animate-jackpot {
+        animation: jackpot-bounce 0.5s infinite;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
