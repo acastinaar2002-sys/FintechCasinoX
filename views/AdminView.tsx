@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GameLog, UserProfile } from '../types';
-import { Activity, Users, DollarSign, TrendingUp, Search, Eye } from 'lucide-react';
+import { Activity, Users, DollarSign, TrendingUp, Search, Eye, Plus, Minus } from 'lucide-react';
 
 interface AdminViewProps {
   logs: GameLog[];
   user: UserProfile | null;
+  onModifyBalance: (amount: number) => void;
 }
 
-export const AdminView: React.FC<AdminViewProps> = ({ logs, user }) => {
+export const AdminView: React.FC<AdminViewProps> = ({ logs, user, onModifyBalance }) => {
+  const [fundAmount, setFundAmount] = useState(1000);
+
   // Mock data to mix with real user data for a "Live" feel
   const mockUsers = [
     { name: "SarahConnor_99", status: "Active" },
@@ -20,7 +23,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ logs, user }) => {
   const profit = totalVolume - totalPayout;
 
   return (
-    <div className="h-full overflow-y-auto bg-[#050505] p-6 md:p-10">
+    <div className="h-full overflow-y-auto bg-[#050505] p-6 md:p-10 animate-fade-in">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
@@ -133,7 +136,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ logs, user }) => {
           </div>
         </div>
 
-        {/* User Base Sidebar */}
+        {/* User Base Sidebar & Fund Management */}
         <div className="bg-[#141417] rounded-2xl border border-white/5 p-6 h-[500px] flex flex-col">
             <h3 className="font-heading font-bold text-white mb-6">Usuarios Conectados</h3>
             
@@ -170,9 +173,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ logs, user }) => {
                 ))}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-white/10">
+            {/* FUND MANAGEMENT SECTION */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+                <h4 className="text-white font-bold text-xs uppercase mb-3 flex items-center gap-2">
+                    <DollarSign size={14} className="text-[#D4C28A]" /> Gestión de Fondos
+                </h4>
+                <div className="flex gap-2 mb-3">
+                    <input 
+                        type="number" 
+                        value={fundAmount}
+                        onChange={(e) => setFundAmount(Number(e.target.value))}
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-[#D4C28A] outline-none"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                    <button onClick={() => onModifyBalance(fundAmount)} className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 py-2 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center gap-1">
+                        <Plus size={14} /> ACREDITAR
+                    </button>
+                    <button onClick={() => onModifyBalance(-fundAmount)} className="bg-red-500/20 text-red-400 border border-red-500/30 py-2 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-1">
+                        <Minus size={14} /> DEBITAR
+                    </button>
+                </div>
+
                 <button className="w-full py-3 bg-[#B23A48]/20 text-[#B23A48] border border-[#B23A48]/30 rounded-xl text-sm font-bold hover:bg-[#B23A48] hover:text-white transition-colors">
-                    PAUSAR OPERACIONES (Emergencia)
+                    PAUSAR OPERACIONES
                 </button>
             </div>
         </div>

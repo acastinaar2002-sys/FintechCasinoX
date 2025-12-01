@@ -74,7 +74,7 @@ function App() {
       case AppMode.KYC:
         return <VisionView />;
       case AppMode.ADMIN:
-        return <AdminView logs={gameLogs} user={user} />;
+        return <AdminView logs={gameLogs} user={user} onModifyBalance={updateBalance} />;
       default:
         return <HomeView onNavigate={setCurrentMode} userName={user?.name} />;
     }
