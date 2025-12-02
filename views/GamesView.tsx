@@ -5,7 +5,7 @@ import {
   StopCircle, Coins, Target, Grid3X3, ArrowDown,
   Brain, CheckCircle, XCircle, Rocket, Info, Spline,
   Globe, Landmark, Palette, FlaskConical, Clapperboard, Trophy,
-  User, Users
+  User, Users, Repeat
 } from 'lucide-react';
 import { useMultiplayer } from '../services/multiplayerService';
 
@@ -23,12 +23,12 @@ const formatCurrency = (val: number) => val.toLocaleString('es-ES', { minimumFra
 
 // --- TRIVIA DATA ---
 const TRIVIA_CATEGORIES = [
-  { id: 'GEO', name: 'Geografía', icon: Globe, color: 'bg-blue-500', text: 'text-blue-500' },
-  { id: 'HIST', name: 'Historia', icon: Landmark, color: 'bg-yellow-600', text: 'text-yellow-600' },
-  { id: 'ART', name: 'Arte', icon: Palette, color: 'bg-pink-500', text: 'text-pink-500' },
-  { id: 'SCI', name: 'Ciencia', icon: FlaskConical, color: 'bg-green-500', text: 'text-green-500' },
-  { id: 'ENT', name: 'Entretenimiento', icon: Clapperboard, color: 'bg-purple-500', text: 'text-purple-500' },
-  { id: 'SPORT', name: 'Deportes', icon: Trophy, color: 'bg-orange-500', text: 'text-orange-500' },
+  { id: 'GEO', name: 'Geografía', icon: Globe, color: 'bg-blue-600', text: 'text-blue-500', hex: '#2563eb' },
+  { id: 'HIST', name: 'Historia', icon: Landmark, color: 'bg-yellow-600', text: 'text-yellow-600', hex: '#ca8a04' },
+  { id: 'ART', name: 'Arte', icon: Palette, color: 'bg-pink-600', text: 'text-pink-500', hex: '#db2777' },
+  { id: 'SCI', name: 'Ciencia', icon: FlaskConical, color: 'bg-green-600', text: 'text-green-500', hex: '#16a34a' },
+  { id: 'ENT', name: 'Entretenimiento', icon: Clapperboard, color: 'bg-purple-600', text: 'text-purple-500', hex: '#9333ea' },
+  { id: 'SPORT', name: 'Deportes', icon: Trophy, color: 'bg-orange-600', text: 'text-orange-500', hex: '#ea580c' },
 ];
 
 const TRIVIA_DB: Record<string, { q: string, options: string[], ans: number }[]> = {
@@ -244,6 +244,17 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const [triviaResult, setTriviaResult] = useState<'correct' | 'wrong' | null>(null);
   const [showTriviaModal, setShowTriviaModal] = useState(false);
 
+  // --- ROULETTE STATE ---
+  const [rouletteSpinning, setRouletteSpinning] = useState(false);
+  const [rouletteAngle, setRouletteAngle] = useState(0);
+  const [rouletteBetType, setRouletteBetType] = useState<'RED' | 'BLACK' | 'GREEN' | null>(null);
+  const [rouletteResultNumber, setRouletteResultNumber] = useState<number | null>(null);
+
+  // --- SLOTS STATE ---
+  const [slotsSpinning, setSlotsSpinning] = useState(false);
+  const [slotsReels, setSlotsReels] = useState(['7️⃣', '💎', '🍒']);
+  const slotsSymbols = ['🍒', '🍋', '🍇', '💎', '7️⃣', '🔔'];
+
   // --- LIMBO STATE ---
   const [limboTarget, setLimboTarget] = useState(2.0);
   const [limboResult, setLimboResult] = useState<number | null>(null);
@@ -316,7 +327,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     setChatInput("");
   };
 
-  // --- BLACKJACK ENGINE (MULTI-SEAT) ---
+  // --- BLACKJACK ENGINE ---
   const bjSuits = ['♠', '♥', '♣', '♦'];
   const bjValues = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   
@@ -395,7 +406,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
               nextTurn();
           }
       }
-  }, [activeGame, bjState, activeSeatIndex, bjSeats]); // Re-run when seat or hand updates
+  }, [activeGame, bjState, activeSeatIndex, bjSeats]); 
 
   const updateSeat = (idx: number, updates: Partial<BjSeat>) => {
       setBjSeats(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
@@ -413,9 +424,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
 
   const playDealerTurn = async () => {
       let dHand = [...dealerHand];
-      let deck = [...bjDeck]; // copy deck logic? assume state update is sync enough for demo
+      let deck = [...bjDeck]; 
       
-      // Simple dealer loop animation
       const drawLoop = setInterval(() => {
            if (getBjValue(dHand) < 17) {
                dHand.push(deck.pop());
@@ -455,7 +465,6 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       }));
   };
 
-  // User Actions
   const hitBj = () => {
       const seat = bjSeats[activeSeatIndex];
       const newHand = [...seat.hand, bjDeck.pop()];
@@ -473,10 +482,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       nextTurn();
   };
 
-  // --- OTHER GAME ENGINES (Crash, Mines, etc remain same, omitted for brevity but included in output) ---
-  
-  // (Rest of logic for other games preserved...)
-  // 1. TRIVIA ROYALE
+  // --- TRIVIA ENGINE ---
   const spinTriviaWheel = () => {
       if (currentBet > balance) return;
       updateBalance(-currentBet);
@@ -485,14 +491,28 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       setTriviaQ(null);
       setShowTriviaModal(false);
 
-      const extraDegrees = Math.floor(Math.random() * 360);
-      const totalRotation = triviaRotation + 1440 + extraDegrees;
-      setTriviaRotation(totalRotation);
+      // 6 segments, 60 degrees each.
+      // Index 0 (GEO, Blue) is at top.
+      const spins = 5;
+      const targetIndex = Math.floor(Math.random() * 6); // 0-5
+      const degreesPerSegment = 360 / 6;
+      
+      // We want targetIndex to align with the pointer at 0deg (top)
+      // Since rotation is clockwise, the segment at `angle` will be `360 - angle` at top?
+      // Let's simplify: Rotate to target index * 60 + random variance within segment
+      
+      const targetAngle = (spins * 360) + (targetIndex * degreesPerSegment) + (degreesPerSegment / 2);
+      
+      // Because we use -rotate in CSS for icon correction, we need to map the result index carefully
+      // Index 0: 0-60 deg (Top Right?) No, Conic starts top and goes clockwise.
+      // We need to rotate the WHEEL so the chosen segment is at the TOP (pointer).
+      // If we rotate clockwise by X, the segment at -X (or 360-X) moves to top.
+      
+      const finalRotation = 2160 + (360 - (targetIndex * 60)); // 6 full spins + adjustment
+      setTriviaRotation(finalRotation);
 
       setTimeout(() => {
-          const normalized = totalRotation % 360;
-          const segmentIndex = Math.floor((360 - normalized) / 60) % 6;
-          const category = TRIVIA_CATEGORIES[segmentIndex];
+          const category = TRIVIA_CATEGORIES[targetIndex];
           setTriviaCategory(category);
           const qList = TRIVIA_DB[category.id];
           const q = qList[Math.floor(Math.random() * qList.length)];
@@ -526,6 +546,87 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       setTimeout(() => setShowTriviaModal(false), 2000);
   };
 
+  // --- ROULETTE ENGINE ---
+  const europeanWheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+  
+  const spinRoulette = () => {
+    if (!rouletteBetType || currentBet > balance) return;
+    updateBalance(-currentBet);
+    setIsPlaying(true);
+    setRouletteSpinning(true);
+    
+    // Determine Result
+    const randomIndex = Math.floor(Math.random() * europeanWheel.length);
+    const resultNum = europeanWheel[randomIndex];
+    setRouletteResultNumber(resultNum);
+
+    // Calculate rotation: 5 full spins + degrees to reach the number
+    // The wheel graphic has 0 at top. Index of 0 is 0.
+    // Each segment is 360 / 37 approx 9.72 deg.
+    // Rotate counter-clockwise to bring number to top marker? 
+    // Let's rotate clockwise. The number at TOP will be determined by rotation.
+    // Angle = 360 - (Index * 360/37).
+    
+    const segmentAngle = 360 / 37;
+    const targetAngle = 360 - (randomIndex * segmentAngle);
+    const totalRotation = rouletteAngle + 1800 + targetAngle; // Accumulate rotation so it doesn't spin back
+    
+    setRouletteAngle(totalRotation);
+
+    setTimeout(() => {
+        setRouletteSpinning(false);
+        setIsPlaying(false);
+        
+        let win = 0;
+        const isRed = [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3].includes(resultNum);
+        const isBlack = resultNum !== 0 && !isRed;
+        
+        if (rouletteBetType === 'GREEN' && resultNum === 0) win = currentBet * 36;
+        else if (rouletteBetType === 'RED' && isRed) win = currentBet * 2;
+        else if (rouletteBetType === 'BLACK' && isBlack) win = currentBet * 2;
+
+        notify(win, `Resultado: ${resultNum} (${resultNum === 0 ? 'Verde' : isRed ? 'Rojo' : 'Negro'})`, 'ROULETTE', win/currentBet);
+    }, 4000);
+  };
+
+  // --- SLOTS ENGINE ---
+  const spinSlots = () => {
+    if (currentBet > balance) return;
+    updateBalance(-currentBet);
+    setIsPlaying(true);
+    setSlotsSpinning(true);
+
+    // Visual Spin Start
+    setTimeout(() => {
+        const res = [
+            slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)],
+            slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)],
+            slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)]
+        ];
+        
+        setSlotsReels(res);
+        setSlotsSpinning(false);
+        setIsPlaying(false);
+
+        // Check Win
+        // 777 = Jackpot 50x
+        // 3 of a kind = 10x
+        // 2 of a kind = 2x
+        let win = 0;
+        if (res[0] === res[1] && res[1] === res[2]) {
+            if (res[0] === '7️⃣') win = currentBet * 50;
+            else if (res[0] === '💎') win = currentBet * 25;
+            else win = currentBet * 10;
+        } else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) {
+            win = currentBet * 2;
+        }
+
+        if (win > 0) notify(win, "¡Premio de Tragamonedas!", 'SLOTS', win/currentBet);
+        else notify(0, "Inténtalo de nuevo", 'SLOTS', 0);
+    }, 2000);
+  };
+
+  // --- OTHER GAMES PRESERVED ---
   const playLimbo = () => {
       if (currentBet > balance) return;
       updateBalance(-currentBet);
@@ -686,6 +787,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
           case 'CRASH': return "Retírate antes de que el cohete explote. ¿Hasta dónde te atreves a llegar?";
           case 'MINES': return "Encuentra diamantes, evita las bombas. Puedes cobrar en cualquier momento.";
           case 'BLACKJACK': return "Mesa multijugador. Vence al dealer con otros jugadores en vivo (IA). Blackjack paga 3:2.";
+          case 'ROULETTE': return "Ruleta Europea. Apuesta a Rojo, Negro o al Cero Verde. Pagos 2x y 36x.";
+          case 'SLOTS': return "Alinea 3 símbolos iguales. 777 paga 50x. Diamantes 25x.";
           default: return "";
       }
   }
@@ -715,7 +818,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                     { id: 'TRIVIA', name: 'Trivia Royale', icon: Brain, color: 'text-purple-400', img: 'https://images.unsplash.com/photo-1633511090164-b43840ea1607?q=80&w=2070' },
                     { id: 'BLACKJACK', name: 'Blackjack Live', icon: Spade, color: 'text-white', img: 'https://images.unsplash.com/photo-1605870445919-838d190e8e1b?q=80&w=2072' },
                     { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, color: 'text-pink-500', img: 'https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074' },
-                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1623949566952-0d5ee07cb2b6?q=80&w=2069' },
+                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1612693898864-42f2cb2623a3?q=80&w=2070' },
                     { id: 'CRASH', name: 'Crash', icon: TrendingUp, color: 'text-rose-500', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072' },
                     { id: 'LIMBO', name: 'Limbo', icon: Target, color: 'text-indigo-400', img: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070' },
                     { id: 'KENO', name: 'Keno', icon: Grid3X3, color: 'text-purple-500', img: 'https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070' },
@@ -790,6 +893,21 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                       </div>
                   </div>
 
+                  {/* Roulette Bets */}
+                  {activeGame === 'ROULETTE' && (
+                      <div className="grid grid-cols-3 gap-2">
+                          <button onClick={() => setRouletteBetType('RED')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'RED' ? 'bg-red-600 border-white text-white' : 'bg-red-900/40 border-red-600/30 text-red-400 hover:bg-red-900/60'}`}>
+                              RED (2x)
+                          </button>
+                          <button onClick={() => setRouletteBetType('GREEN')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'GREEN' ? 'bg-green-600 border-white text-white' : 'bg-green-900/40 border-green-600/30 text-green-400 hover:bg-green-900/60'}`}>
+                              0 (36x)
+                          </button>
+                          <button onClick={() => setRouletteBetType('BLACK')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'BLACK' ? 'bg-slate-700 border-white text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
+                              BLACK (2x)
+                          </button>
+                      </div>
+                  )}
+
                   {/* Game Specific Inputs */}
                   {activeGame === 'LIMBO' && (
                       <div>
@@ -853,9 +971,13 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                           }
                           if (activeGame === 'KENO') playKeno();
                           if (activeGame === 'DICE') rollDice();
+                          if (activeGame === 'ROULETTE') spinRoulette();
+                          if (activeGame === 'SLOTS') spinSlots();
                       }}
                       disabled={
                           (activeGame === 'TRIVIA' && isPlaying) ||
+                          (activeGame === 'ROULETTE' && (isPlaying || !rouletteBetType)) ||
+                          (activeGame === 'SLOTS' && isPlaying) ||
                           (activeGame === 'BLACKJACK' && bjState === 'PLAYING' && !bjSeats[activeSeatIndex].isUser) ||
                           (activeGame === 'MINES' && false) || 
                           (activeGame === 'KENO' && isPlaying) ||
@@ -877,6 +999,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                        activeGame === 'BLACKJACK' && bjState === 'PLAYING' ? (bjSeats[activeSeatIndex].isUser ? 'PEDIR CARTA' : `TURNO: ${bjSeats[activeSeatIndex].name}`) : 
                        activeGame === 'CRASH' && isPlaying ? 'RETIRAR AHORA' :
                        activeGame === 'MINES' && isPlaying ? 'COBRAR' : 
+                       activeGame === 'ROULETTE' && isPlaying ? 'GIRANDO...' :
                        'JUGAR'}
                   </button>
 
@@ -907,7 +1030,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                                     activeGame === 'DICE' ? 'url("https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070")' :
                                     activeGame === 'KENO' ? 'url("https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070")' :
                                     activeGame === 'LIMBO' ? 'url("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070")' :
-                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1623949566952-0d5ee07cb2b6?q=80&w=2069")' :
+                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1612693898864-42f2cb2623a3?q=80&w=2070")' :
                                     activeGame === 'PLINKO' ? 'url("https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074")' :
                                     activeGame === 'ROULETTE' ? 'url("https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070")' :
                                     activeGame === 'SLOTS' ? 'url("https://images.unsplash.com/photo-1605218427368-35b0f998cb4b?q=80&w=2080")' : 
@@ -919,7 +1042,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                     </>
                   )}
 
-                  {/* --- BLACKJACK RENDER (MULTI-SEAT) --- */}
+                  {/* --- BLACKJACK RENDER --- */}
                   {activeGame === 'BLACKJACK' && (
                       <div className="w-full h-full flex flex-col justify-between p-2 md:p-8 relative overflow-hidden">
                           {/* Felt Background */}
@@ -993,7 +1116,52 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                       </div>
                   )}
 
-                  {/* ... (Render other games: TRIVIA, PLINKO, KENO, LIMBO, CRASH, MINES, DICE - Preserved) */}
+                  {/* --- SLOTS RENDER --- */}
+                  {activeGame === 'SLOTS' && (
+                      <div className="relative z-10 p-8 bg-black/60 rounded-3xl border-4 border-[#D4C28A] shadow-[0_0_50px_rgba(212,194,138,0.2)]">
+                           <div className="flex gap-4">
+                               {slotsReels.map((symbol, i) => (
+                                   <div key={i} className="w-24 h-40 bg-white rounded-xl border-4 border-slate-300 flex items-center justify-center text-6xl shadow-inner relative overflow-hidden">
+                                        <div className={`transition-all duration-100 ${slotsSpinning ? 'blur-sm scale-y-150 opacity-50' : 'blur-0 scale-100 opacity-100'}`}>
+                                            {symbol}
+                                        </div>
+                                        {/* Scanlines */}
+                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-10 bg-[length:100%_2px,3px_100%] pointer-events-none"></div>
+                                   </div>
+                               ))}
+                           </div>
+                           <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#D4C28A] px-4 py-1 rounded-full text-black font-bold text-xs uppercase tracking-widest border border-white">
+                               Fintech Paylines
+                           </div>
+                      </div>
+                  )}
+
+                  {/* --- ROULETTE RENDER --- */}
+                  {activeGame === 'ROULETTE' && (
+                      <div className="relative z-10 flex flex-col items-center">
+                           <div className="w-80 h-80 rounded-full border-8 border-[#2e1d0f] shadow-2xl relative flex items-center justify-center bg-[#0d2e1c] overflow-hidden">
+                               {/* Wheel Image */}
+                               <img 
+                                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Roulette_wheel.svg/1024px-Roulette_wheel.svg.png" 
+                                  alt="Roulette"
+                                  className="w-full h-full object-cover transition-transform duration-[4000ms] cubic-bezier(0.25, 0.1, 0.25, 1)"
+                                  style={{ transform: `rotate(${rouletteAngle}deg)` }}
+                               />
+                               {/* Pointer */}
+                               <div className="absolute top-0 w-4 h-8 bg-white shadow-lg z-20" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }}></div>
+                           </div>
+                           
+                           {/* Betting Board rendered in sidebar, visual result here */}
+                           {rouletteResultNumber !== null && !rouletteSpinning && (
+                               <div className="mt-8 bg-black/80 px-8 py-4 rounded-xl border border-[#D4C28A] animate-bounce">
+                                   <div className={`text-4xl font-bold ${[0].includes(rouletteResultNumber) ? 'text-green-500' : [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3].includes(rouletteResultNumber) ? 'text-red-500' : 'text-white'}`}>
+                                       {rouletteResultNumber}
+                                   </div>
+                               </div>
+                           )}
+                      </div>
+                  )}
+
                   {/* --- TRIVIA ROYALE RENDER --- */}
                   {activeGame === 'TRIVIA' && (
                       <div className="w-full h-full flex flex-col items-center justify-center p-4 relative z-10">
@@ -1008,13 +1176,30 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 w-8 h-8 rotate-180">
                                    <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[20px] border-b-white drop-shadow-md"></div>
                                </div>
-                               <div className="w-64 h-64 md:w-80 md:h-80 rounded-full border-4 border-white shadow-[0_0_50px_rgba(255,255,255,0.2)] relative overflow-hidden transition-transform duration-[3000ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" style={{ transform: `rotate(${triviaRotation}deg)`, background: `conic-gradient(#3b82f6 0% 16.66%, #ca8a04 16.66% 33.33%, #ec4899 33.33% 50%, #22c55e 50% 66.66%, #a855f7 66.66% 83.33%, #f97316 83.33% 100%)` }}>
+                               <div className="w-64 h-64 md:w-80 md:h-80 rounded-full border-4 border-white shadow-[0_0_50px_rgba(255,255,255,0.2)] relative overflow-hidden transition-transform duration-[3000ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" 
+                                    style={{ 
+                                        transform: `rotate(${triviaRotation}deg)`, 
+                                        background: `conic-gradient(
+                                            ${TRIVIA_CATEGORIES[0].hex} 0deg 60deg, 
+                                            ${TRIVIA_CATEGORIES[5].hex} 60deg 120deg, 
+                                            ${TRIVIA_CATEGORIES[4].hex} 120deg 180deg, 
+                                            ${TRIVIA_CATEGORIES[3].hex} 180deg 240deg, 
+                                            ${TRIVIA_CATEGORIES[2].hex} 240deg 300deg, 
+                                            ${TRIVIA_CATEGORIES[1].hex} 300deg 360deg
+                                        )` 
+                                    }}>
                                     {TRIVIA_CATEGORIES.map((cat, i) => {
-                                        const angle = (i * 60) + 30;
+                                        // Icons need to be placed at center of segments
+                                        // Segments are 60deg. Center is 30, 90, 150...
+                                        // Because the gradient order is reversed visually (clockwise), we map carefully.
+                                        // Index 0 (Blue) is 0-60. Center 30.
+                                        const angle = (i * 60) + 30; // 30, 90, 150...
+                                        // BUT we reversed color order in conic gradient to match rotation logic?
+                                        // Let's stick to simple placement.
                                         return (
-                                            <div key={cat.id} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none" style={{ transform: `rotate(${angle}deg)` }}>
-                                                <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white drop-shadow-md">
-                                                    <cat.icon size={24} style={{ transform: `rotate(${-angle}deg)` }} />
+                                            <div key={cat.id} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none" style={{ transform: `rotate(${-angle}deg)` }}>
+                                                <div className="absolute top-8 left-1/2 -translate-x-1/2 text-white drop-shadow-md">
+                                                    <cat.icon size={24} style={{ transform: `rotate(${angle}deg)` }} />
                                                 </div>
                                             </div>
                                         )
