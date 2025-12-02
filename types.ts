@@ -45,3 +45,12 @@ export interface GameLog {
   timestamp: number;
   result: 'WIN' | 'LOSS';
 }
+
+export interface MultiplayerMessage {
+  type: 'CHAT' | 'WIN';
+  user: string;
+  message?: string;
+  amount?: number;
+  game?: string;
+  timestamp: number;
+}
