@@ -159,7 +159,8 @@ const PlinkoGame = ({ active, onFinish, rows = 16 }: { active: boolean, onFinish
                 
                 ctx.fillStyle = color;
                 ctx.beginPath();
-                ctx.roundRect(x - 14, bottomY + 15, 28, 25, 4);
+                // Using rect for compatibility
+                ctx.rect(x - 14, bottomY + 15, 28, 25);
                 ctx.fill();
                 
                 ctx.fillStyle = '#000';
@@ -816,7 +817,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                     { id: 'TRIVIA', name: 'Trivia Royale', icon: Brain, color: 'text-purple-400', img: 'https://images.unsplash.com/photo-1633511090164-b43840ea1607?q=80&w=2070' },
                     { id: 'BLACKJACK', name: 'Blackjack Live', icon: Spade, color: 'text-white', img: 'https://images.unsplash.com/photo-1605870445919-838d190e8e1b?q=80&w=2072' },
                     { id: 'SLOTS', name: 'Fintech Slots', icon: Spline, color: 'text-yellow-300', img: 'https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070' },
-                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1605631089906-88b0a94464c1?q=80&w=2070' },
+                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1575550959106-5a7defe28b56?q=80&w=2070' },
                     { id: 'CRASH', name: 'Crash', icon: TrendingUp, color: 'text-rose-500', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072' },
                     { id: 'ROULETTE', name: 'Roulette', icon: StopCircle, color: 'text-red-500', img: 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070' },
                     { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, color: 'text-pink-500', img: 'https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074' },
@@ -1028,7 +1029,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                                     activeGame === 'DICE' ? 'url("https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070")' :
                                     activeGame === 'KENO' ? 'url("https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070")' :
                                     activeGame === 'LIMBO' ? 'url("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070")' :
-                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1618386455146-a82f34845185?q=80&w=2070")' :
+                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1575550959106-5a7defe28b56?q=80&w=2070")' :
                                     activeGame === 'PLINKO' ? 'url("https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074")' :
                                     activeGame === 'ROULETTE' ? 'url("https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070")' :
                                     activeGame === 'SLOTS' ? 'url("https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070")' : 
