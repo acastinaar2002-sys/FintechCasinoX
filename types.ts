@@ -1,3 +1,4 @@
+
 export enum AppMode {
   HOME = 'HOME',
   GAMES = 'GAMES',

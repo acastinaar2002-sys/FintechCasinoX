@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Dices, ArrowLeft, Spade, Heart, Club, Diamond, Zap, 
@@ -5,7 +6,7 @@ import {
   StopCircle, Coins, Target, Grid3X3, ArrowDown,
   Brain, CheckCircle, XCircle, Rocket, Info, Spline,
   Globe, Landmark, Palette, FlaskConical, Clapperboard, Trophy,
-  User, Users, Repeat
+  User, Users
 } from 'lucide-react';
 import { useMultiplayer } from '../services/multiplayerService';
 
@@ -105,7 +106,8 @@ const PlinkoGame = ({ active, onFinish, rows = 16 }: { active: boolean, onFinish
     const spacing = 35; 
     
     const dropBall = () => {
-        const startX = canvasRef.current!.width / 2;
+        if (!canvasRef.current) return;
+        const startX = canvasRef.current.width / 2;
         setBalls(prev => [...prev, { 
             x: startX + (Math.random() - 0.5) * 5, 
             y: 20, 
@@ -238,7 +240,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
 
   // --- TRIVIA STATE ---
   const [triviaRotation, setTriviaRotation] = useState(0);
-  const [triviaCategory, setTriviaCategory] = useState<typeof TRIVIA_CATEGORIES[0] | null>(null);
+  const [triviaCategory, setTriviaCategory] = useState<(typeof TRIVIA_CATEGORIES)[number] | null>(null);
   const [collectedBadges, setCollectedBadges] = useState<string[]>([]);
   const [triviaQ, setTriviaQ] = useState<any>(null);
   const [triviaResult, setTriviaResult] = useState<'correct' | 'wrong' | null>(null);
@@ -497,18 +499,10 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       const targetIndex = Math.floor(Math.random() * 6); // 0-5
       const degreesPerSegment = 360 / 6;
       
-      // We want targetIndex to align with the pointer at 0deg (top)
-      // Since rotation is clockwise, the segment at `angle` will be `360 - angle` at top?
-      // Let's simplify: Rotate to target index * 60 + random variance within segment
-      
       const targetAngle = (spins * 360) + (targetIndex * degreesPerSegment) + (degreesPerSegment / 2);
       
-      // Because we use -rotate in CSS for icon correction, we need to map the result index carefully
-      // Index 0: 0-60 deg (Top Right?) No, Conic starts top and goes clockwise.
-      // We need to rotate the WHEEL so the chosen segment is at the TOP (pointer).
-      // If we rotate clockwise by X, the segment at -X (or 360-X) moves to top.
-      
-      const finalRotation = 2160 + (360 - (targetIndex * 60)); // 6 full spins + adjustment
+      // We reverse mapping for conic gradient rotation
+      const finalRotation = 2160 + (360 - (targetIndex * 60)); 
       setTriviaRotation(finalRotation);
 
       setTimeout(() => {
@@ -554,27 +548,31 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     updateBalance(-currentBet);
     setIsPlaying(true);
     setRouletteSpinning(true);
+    setRouletteResultNumber(null);
     
     // Determine Result
     const randomIndex = Math.floor(Math.random() * europeanWheel.length);
     const resultNum = europeanWheel[randomIndex];
-    setRouletteResultNumber(resultNum);
-
-    // Calculate rotation: 5 full spins + degrees to reach the number
-    // The wheel graphic has 0 at top. Index of 0 is 0.
-    // Each segment is 360 / 37 approx 9.72 deg.
-    // Rotate counter-clockwise to bring number to top marker? 
-    // Let's rotate clockwise. The number at TOP will be determined by rotation.
-    // Angle = 360 - (Index * 360/37).
+    
+    // Angle calculation: 360 deg total. 37 segments. Each segment ~9.73 deg.
+    // Index 0 (0) is at top (0 deg).
+    // To land on index I, we must rotate so index I is at 0.
+    // Clockwise rotation of X degrees moves index at X to 0? No.
+    // Clockwise rotation moves the wheel. The fixed pointer is at top.
+    // If we rotate +9.73 deg, index 36 (left of 0) moves to top.
+    // So target angle = Index * segmentAngle? No.
+    // Target Angle = 360 - (Index * segmentAngle).
     
     const segmentAngle = 360 / 37;
-    const targetAngle = 360 - (randomIndex * segmentAngle);
-    const totalRotation = rouletteAngle + 1800 + targetAngle; // Accumulate rotation so it doesn't spin back
+    const targetRotation = (360 - (randomIndex * segmentAngle)); 
+    const totalRotation = rouletteAngle + 1800 + (targetRotation - (rouletteAngle % 360)); 
+    // Add extra spins + delta to reach target
     
-    setRouletteAngle(totalRotation);
+    setRouletteAngle(rouletteAngle + 1800 + (360 - (rouletteAngle % 360)) + targetRotation);
 
     setTimeout(() => {
         setRouletteSpinning(false);
+        setRouletteResultNumber(resultNum);
         setIsPlaying(false);
         
         let win = 0;
@@ -817,14 +815,14 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                 {[
                     { id: 'TRIVIA', name: 'Trivia Royale', icon: Brain, color: 'text-purple-400', img: 'https://images.unsplash.com/photo-1633511090164-b43840ea1607?q=80&w=2070' },
                     { id: 'BLACKJACK', name: 'Blackjack Live', icon: Spade, color: 'text-white', img: 'https://images.unsplash.com/photo-1605870445919-838d190e8e1b?q=80&w=2072' },
-                    { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, color: 'text-pink-500', img: 'https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074' },
-                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1612693898864-42f2cb2623a3?q=80&w=2070' },
+                    { id: 'SLOTS', name: 'Fintech Slots', icon: Spline, color: 'text-yellow-300', img: 'https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070' },
+                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1605631089906-88b0a94464c1?q=80&w=2070' },
                     { id: 'CRASH', name: 'Crash', icon: TrendingUp, color: 'text-rose-500', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072' },
+                    { id: 'ROULETTE', name: 'Roulette', icon: StopCircle, color: 'text-red-500', img: 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070' },
+                    { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, color: 'text-pink-500', img: 'https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074' },
                     { id: 'LIMBO', name: 'Limbo', icon: Target, color: 'text-indigo-400', img: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070' },
                     { id: 'KENO', name: 'Keno', icon: Grid3X3, color: 'text-purple-500', img: 'https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070' },
                     { id: 'DICE', name: 'Dice', icon: Dices, color: 'text-emerald-500', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070' },
-                    { id: 'ROULETTE', name: 'Roulette', icon: StopCircle, color: 'text-red-500', img: 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070' },
-                    { id: 'SLOTS', name: 'Fintech Slots', icon: Spline, color: 'text-yellow-300', img: 'https://images.unsplash.com/photo-1605218427368-35b0f998cb4b?q=80&w=2080' },
                 ].map((game) => (
                     <div key={game.id} onClick={() => setActiveGame(game.id as GameType)} className="group relative h-56 rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-[#D4C28A] transition-all shadow-2xl hover:translate-y-[-5px]">
                         <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" style={{ backgroundImage: `url(${game.img})` }}></div>
@@ -1030,10 +1028,10 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                                     activeGame === 'DICE' ? 'url("https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070")' :
                                     activeGame === 'KENO' ? 'url("https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070")' :
                                     activeGame === 'LIMBO' ? 'url("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070")' :
-                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1612693898864-42f2cb2623a3?q=80&w=2070")' :
+                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1618386455146-a82f34845185?q=80&w=2070")' :
                                     activeGame === 'PLINKO' ? 'url("https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074")' :
                                     activeGame === 'ROULETTE' ? 'url("https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070")' :
-                                    activeGame === 'SLOTS' ? 'url("https://images.unsplash.com/photo-1605218427368-35b0f998cb4b?q=80&w=2080")' : 
+                                    activeGame === 'SLOTS' ? 'url("https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070")' : 
                                     activeGame === 'CRASH' ? 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072")' : 
                                     activeGame === 'BLACKJACK' ? 'none' : 'none'
                              }}
