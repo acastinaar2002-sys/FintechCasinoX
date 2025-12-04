@@ -1,11 +1,16 @@
-import React from 'react';
-import { CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp, Activity, Plus, ShieldAlert, CheckCircle, Wallet, Bitcoin } from 'lucide-react';
 
 interface WalletViewProps {
   balance: number;
+  onAddFunds: (amount: number) => void;
 }
 
-export const WalletView: React.FC<WalletViewProps> = ({ balance }) => {
+export const WalletView: React.FC<WalletViewProps> = ({ balance, onAddFunds }) => {
+  const [method, setMethod] = useState<'paypal' | 'crypto'>('paypal');
+  const [amount, setAmount] = useState(1000);
+  const [status, setStatus] = useState<'idle' | 'processing' | 'success'>('idle');
+
   const transactions = [
     { id: 1, type: 'deposit', desc: 'Recarga Inicial Demo', amount: 5000, date: 'Hoy, 10:23 AM', status: 'Completado' },
     { id: 2, type: 'loss', desc: 'FintechSlot Activity', amount: -250, date: 'Hoy, 10:45 AM', status: 'Procesado' },
@@ -13,8 +18,18 @@ export const WalletView: React.FC<WalletViewProps> = ({ balance }) => {
     { id: 4, type: 'fee', desc: 'Network Fee (Simulado)', amount: -2, date: 'Hoy, 11:05 AM', status: 'Completado' },
   ];
 
+  const handleSimulateDeposit = () => {
+    if (amount <= 0) return;
+    setStatus('processing');
+    setTimeout(() => {
+      onAddFunds(amount);
+      setStatus('success');
+      setTimeout(() => setStatus('idle'), 3000);
+    }, 1500);
+  };
+
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto space-y-8">
+    <div className="h-full overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-20">
       
       <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
         <div>
@@ -46,24 +61,58 @@ export const WalletView: React.FC<WalletViewProps> = ({ balance }) => {
             </div>
         </div>
 
-        {/* Analytics Summary */}
-        <div className="glass-panel rounded-2xl p-8 flex flex-col justify-between">
-            <div>
-                <h3 className="font-heading font-bold text-lg mb-6">Resumen de Actividad</h3>
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <span className="text-slate-400 flex items-center gap-2"><ArrowDownLeft size={16} className="text-emerald-500"/> Ingresos</span>
-                        <span className="font-mono text-white">5,450 FCT</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-slate-400 flex items-center gap-2"><ArrowUpRight size={16} className="text-[#B23A48]"/> Gastos/Juego</span>
-                        <span className="font-mono text-white">252 FCT</span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full mt-4 overflow-hidden">
-                        <div className="bg-[#D4C28A] h-full w-[75%]"></div>
-                    </div>
-                    <p className="text-xs text-slate-500 text-right">75% del límite de gasto seguro</p>
+        {/* Fake Deposit Module */}
+        <div className="glass-panel rounded-2xl p-6 border border-white/10 flex flex-col">
+            <h3 className="font-heading font-bold text-white mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-[#1C8C6E]" /> Agregar Fondos (Simulación)
+            </h3>
+            
+            <div className="flex gap-2 mb-4 bg-black/40 p-1 rounded-xl">
+                <button 
+                    onClick={() => setMethod('paypal')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${method === 'paypal' ? 'bg-[#0070BA] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                    <Wallet size={14} /> PayPal (Simulado)
+                </button>
+                <button 
+                    onClick={() => setMethod('crypto')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${method === 'crypto' ? 'bg-[#F7931A] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                    <Bitcoin size={14} /> Wallet Cripto
+                </button>
+            </div>
+
+            <div className="space-y-3 flex-1">
+                <div>
+                    <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Monto a recargar (FCT)</label>
+                    <input 
+                        type="number" 
+                        value={amount}
+                        onChange={(e) => setAmount(Number(e.target.value))}
+                        className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white font-mono focus:border-[#D4C28A] outline-none"
+                    />
                 </div>
+
+                <div className="bg-[#B23A48]/10 border border-[#B23A48]/30 p-3 rounded-lg flex items-start gap-2">
+                    <ShieldAlert size={16} className="text-[#B23A48] flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-slate-300 leading-tight">
+                        <strong className="text-[#B23A48]">AVISO DE SEGURIDAD:</strong> Por seguridad, no aceptamos tarjetas ni documentos reales. Este módulo es 100% ficticio para fines académicos.
+                    </p>
+                </div>
+
+                <button 
+                    onClick={handleSimulateDeposit}
+                    disabled={status !== 'idle' || amount <= 0}
+                    className={`w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        status === 'success' 
+                        ? 'bg-green-500 text-black' 
+                        : 'bg-white text-black hover:bg-slate-200'
+                    }`}
+                >
+                    {status === 'processing' ? 'Procesando...' : status === 'success' ? (
+                        <> <CheckCircle size={16} /> Fondos Agregados </>
+                    ) : 'Confirmar (Simulación)'}
+                </button>
             </div>
         </div>
       </div>

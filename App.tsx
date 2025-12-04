@@ -66,7 +66,7 @@ function App() {
       case AppMode.GAMES:
         return <GamesView balance={balance} updateBalance={updateBalance} onGameLog={addLog} />;
       case AppMode.WALLET:
-        return <WalletView balance={balance} />;
+        return <WalletView balance={balance} onAddFunds={updateBalance} />;
       case AppMode.EDUCATION:
         return <EducationView />;
       case AppMode.AI_CONCIERGE:
