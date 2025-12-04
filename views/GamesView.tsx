@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Dices, ArrowLeft, Spade, Heart, Club, Diamond, Zap, 
-  Crown, TrendingUp, Skull, Bomb, 
-  StopCircle, Coins, Target, Grid3X3, ArrowDown,
-  Brain, CheckCircle, XCircle, Rocket, Info, Spline,
+  Dices, ArrowLeft, Spade, Zap, 
+  TrendingUp, Bomb, 
+  Target, Grid3X3, ArrowDown,
+  Brain, Rocket, Info,
   Globe, Landmark, Palette, FlaskConical, Clapperboard, Trophy,
-  User, Users
+  Diamond
 } from 'lucide-react';
 import { useMultiplayer } from '../services/multiplayerService';
 
@@ -20,7 +20,22 @@ type GameType = 'LOBBY' | 'SLOTS' | 'DICE' | 'BLACKJACK' | 'ROULETTE' | 'CRASH' 
 
 // --- UTILS ---
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const formatCurrency = (val: number) => val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// FORCE INTEGERS VISUALLY
+const formatCurrency = (val: number) => Math.floor(val).toLocaleString('es-ES'); 
+
+// --- LOBBY CONFIGURATION ---
+const LOBBY_GAMES = [
+  { id: 'TRIVIA', name: 'Trivia Royale', icon: Brain, gradient: 'bg-gradient-to-br from-indigo-600 to-purple-700' },
+  { id: 'BLACKJACK', name: 'Blackjack Live', icon: Spade, gradient: 'bg-gradient-to-br from-slate-800 to-black' },
+  { id: 'SLOTS', name: 'Fintech Slots', icon: Zap, gradient: 'bg-gradient-to-br from-fuchsia-600 to-pink-600' },
+  { id: 'ROULETTE', name: 'Roulette', icon: Target, gradient: 'bg-gradient-to-br from-emerald-700 to-green-900' },
+  { id: 'CRASH', name: 'Crash', icon: Rocket, gradient: 'bg-gradient-to-br from-red-600 to-orange-600' },
+  { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' },
+  { id: 'MINES', name: 'Mines', icon: Bomb, gradient: 'bg-gradient-to-br from-slate-700 to-slate-900' },
+  { id: 'KENO', name: 'Keno', icon: Grid3X3, gradient: 'bg-gradient-to-br from-violet-600 to-indigo-900' },
+  { id: 'LIMBO', name: 'Limbo', icon: TrendingUp, gradient: 'bg-gradient-to-br from-orange-500 to-yellow-600' },
+  { id: 'DICE', name: 'Neon Dice', icon: Dices, gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600' },
+];
 
 // --- TRIVIA DATA ---
 const TRIVIA_CATEGORIES = [
@@ -41,32 +56,26 @@ const TRIVIA_DB: Record<string, { q: string, options: string[], ans: number }[]>
     'HIST': [
         { q: "¿En qué año llegó Colón a América?", options: ["1492", "1500", "1485", "1510"], ans: 0 },
         { q: "¿Quién fue el primer presidente de EE.UU.?", options: ["Lincoln", "Washington", "Jefferson", "Adams"], ans: 1 },
-        { q: "¿Qué imperio construyó el Coliseo?", options: ["Griego", "Romano", "Egipcio", "Otomano"], ans: 1 },
     ],
     'ART': [
         { q: "¿Quién pintó 'La Noche Estrellada'?", options: ["Picasso", "Monet", "Van Gogh", "Dalí"], ans: 2 },
-        { q: "¿Qué estilo es la obra de Frida Kahlo?", options: ["Cubismo", "Surrealismo", "Impresionismo", "Barroco"], ans: 1 },
         { q: "¿Dónde está el Museo del Prado?", options: ["París", "Londres", "Madrid", "Roma"], ans: 2 },
     ],
     'SCI': [
         { q: "¿Cuál es el símbolo químico del Hierro?", options: ["Fe", "Hi", "Ir", "In"], ans: 0 },
         { q: "¿Qué planeta es conocido como el Planeta Rojo?", options: ["Venus", "Marte", "Júpiter", "Saturno"], ans: 1 },
-        { q: "¿Cuál es la velocidad de la luz (aprox)?", options: ["300.000 km/s", "150.000 km/s", "1.000 km/s", "Sonido"], ans: 0 },
     ],
     'ENT': [
         { q: "¿Quién interpretó a Jack en Titanic?", options: ["Brad Pitt", "Tom Cruise", "Leonardo DiCaprio", "Johnny Depp"], ans: 2 },
         { q: "¿Qué serie tiene dragones y tronos?", options: ["Vikings", "Game of Thrones", "The Witcher", "Merlin"], ans: 1 },
-        { q: "¿Quién es el rey del pop?", options: ["Elvis", "Michael Jackson", "Prince", "Madonna"], ans: 1 },
     ],
     'SPORT': [
         { q: "¿Cuántos jugadores tiene un equipo de fútbol?", options: ["9", "10", "11", "12"], ans: 2 },
         { q: "¿En qué deporte se usa una raqueta?", options: ["Fútbol", "Tenis", "Baloncesto", "Natación"], ans: 1 },
-        { q: "¿Dónde fueron los Juegos Olímpicos 2016?", options: ["Londres", "Río", "Tokio", "Pekín"], ans: 1 },
     ]
 };
 
 // --- SHARED COMPONENTS ---
-
 interface CardProps {
   suit?: string;
   value?: string;
@@ -76,51 +85,39 @@ interface CardProps {
 }
 
 const Card: React.FC<CardProps> = ({ suit, value, color, hidden, small }) => (
-    <div className={`${small ? 'w-8 h-12 text-xs' : 'w-16 h-24 md:w-20 md:h-28 text-xl'} rounded-lg border shadow-xl flex items-center justify-center font-bold relative transition-all duration-300 select-none
+    <div className={`${small ? 'w-10 h-14 text-xs' : 'w-14 h-20 md:w-16 md:h-24 text-lg'} rounded-md md:rounded-lg border shadow-xl flex items-center justify-center font-bold relative transition-all duration-300 select-none bg-white
       ${hidden 
-          ? 'bg-[#1a1d21] border-[#2f3543] bg-[url("https://www.transparenttextures.com/patterns/diagmonds-light.png")]' 
-          : 'bg-white border-slate-300 shadow-black/20'}`
+          ? 'bg-[#1a1d21] border-[#2f3543] bg-[repeating-linear-gradient(45deg,#2f3543_0,#2f3543_2px,#1a1d21_2px,#1a1d21_8px)]' 
+          : 'bg-white border-slate-300 shadow-black/30'}`
     }>
         {!hidden && (
             <>
-              <div className={`absolute top-0.5 left-1 md:top-1 md:left-1 text-[10px] md:text-xs ${color}`}>{value}<span className="text-[0.8em]">{suit}</span></div>
-              <div className={`${small ? 'text-base' : 'text-3xl'} ${color}`}>{suit}</div>
-              <div className={`absolute bottom-0.5 right-1 md:bottom-1 md:right-1 text-[10px] md:text-xs ${color} rotate-180`}>{value}<span className="text-[0.8em]">{suit}</span></div>
+              <div className={`absolute top-0.5 left-1 md:top-1 md:left-1 text-[10px] md:text-sm ${color} font-mono leading-none`}>{value}</div>
+              <div className={`${small ? 'text-lg' : 'text-2xl md:text-3xl'} ${color}`}>{suit}</div>
+              <div className={`absolute bottom-0.5 right-1 md:bottom-1 md:right-1 text-[10px] md:text-sm ${color} rotate-180 font-mono leading-none`}>{value}</div>
             </>
         )}
-        {hidden && <div className="text-[#D4C28A] text-xl opacity-50">♠</div>}
+        {hidden && (
+            <div className="w-full h-full flex items-center justify-center border-2 border-[#D4C28A]/20 rounded m-1">
+                 <div className="text-[#D4C28A]/40 text-xl font-casino">X</div>
+            </div>
+        )}
     </div>
 );
 
-// --- PLINKO ENGINE ---
-const PlinkoGame = ({ active, onFinish, rows = 16 }: { active: boolean, onFinish: (mult: number) => void, rows?: number }) => {
+// --- PLINKO ENGINE V2 ---
+const PlinkoGame = ({ triggerDrop, onFinish }: { triggerDrop: number, onFinish: (mult: number) => void }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [balls, setBalls] = useState<any[]>([]);
+    const ballsRef = useRef<any[]>([]);
     
-    // Multipliers for 16 rows (Stake style high risk)
-    const multipliers = [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110];
-    
+    // Config
+    const rows = 16;
+    const spacing = 40;
+    const startY = 50;
     const gravity = 0.25;
-    const friction = 0.99;
-    const bounce = 0.6;
-    const spacing = 35; 
-    
-    const dropBall = () => {
-        if (!canvasRef.current) return;
-        const startX = canvasRef.current.width / 2;
-        setBalls(prev => [...prev, { 
-            x: startX + (Math.random() - 0.5) * 5, 
-            y: 20, 
-            vx: (Math.random() - 0.5) * 2, 
-            vy: 0, 
-            active: true,
-            color: Math.random() > 0.5 ? '#ff0055' : '#D4C28A' 
-        }]);
-    };
-
-    useEffect(() => {
-        if (active) dropBall();
-    }, [active]);
+    const friction = 0.98;
+    const bounce = 0.7;
+    const multipliers = [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110];
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -129,21 +126,22 @@ const PlinkoGame = ({ active, onFinish, rows = 16 }: { active: boolean, onFinish
         if (!ctx) return;
 
         let animationId: number;
-        const pegs: {x: number, y: number}[] = [];
-        const startY = 80;
+        const width = canvas.width;
+        const height = canvas.height;
 
+        const pegs: {x: number, y: number}[] = [];
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col <= row; col++) {
-                const x = canvas.width / 2 - (row * spacing / 2) + (col * spacing);
+                const x = width / 2 - (row * spacing / 2) + (col * spacing);
                 const y = startY + row * spacing;
                 pegs.push({x, y});
             }
         }
 
-        const update = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        const render = () => {
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             pegs.forEach(peg => {
                 ctx.beginPath();
                 ctx.arc(peg.x, peg.y, 4, 0, Math.PI * 2);
@@ -152,80 +150,95 @@ const PlinkoGame = ({ active, onFinish, rows = 16 }: { active: boolean, onFinish
 
             const bottomY = startY + rows * spacing;
             multipliers.forEach((m, i) => {
-                const x = canvas.width / 2 - (rows * spacing / 2) + (i * spacing);
+                const x = width / 2 - (rows * spacing / 2) + (i * spacing);
                 let color = '#f59e0b';
-                if (i < 2 || i > multipliers.length - 3) color = '#ef4444';
-                else if (i > 5 && i < multipliers.length - 6) color = '#10b981';
+                if (i < 2 || i > multipliers.length - 3) color = '#ef4444'; 
+                else if (i > 5 && i < multipliers.length - 6) color = '#10b981'; 
                 
                 ctx.fillStyle = color;
                 ctx.beginPath();
-                // Using rect for compatibility
-                ctx.rect(x - 14, bottomY + 15, 28, 25);
+                ctx.roundRect(x - 18, bottomY + 20, 36, 30, 4);
                 ctx.fill();
                 
                 ctx.fillStyle = '#000';
-                ctx.font = 'bold 9px Montserrat';
+                ctx.font = 'bold 12px Montserrat';
                 ctx.textAlign = 'center';
-                ctx.fillText(m + 'x', x, bottomY + 31);
+                ctx.fillText(m + 'x', x, bottomY + 40);
             });
 
-            setBalls(currentBalls => {
-                const nextBalls = currentBalls.map(ball => {
-                    if (!ball.active) return ball;
+            const activeBalls: any[] = [];
+            
+            ballsRef.current.forEach(ball => {
+                ball.vy += gravity;
+                ball.vx *= friction;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
 
-                    ball.vy += gravity; 
-                    ball.vx *= friction;
-                    ball.y += ball.vy;
-                    ball.x += ball.vx;
-
-                    pegs.forEach(peg => {
-                        const dx = ball.x - peg.x;
-                        const dy = ball.y - peg.y;
-                        const dist = Math.sqrt(dx*dx + dy*dy);
+                pegs.forEach(peg => {
+                    const dx = ball.x - peg.x;
+                    const dy = ball.y - peg.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 10) { 
+                        const angle = Math.atan2(dy, dx);
+                        const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+                        const jitter = (Math.random() - 0.5) * 0.5;
+                        ball.vx = Math.cos(angle + jitter) * speed * bounce;
+                        ball.vy = Math.sin(angle + jitter) * speed * bounce;
                         
-                        if (dist < 9) {
-                            const angle = Math.atan2(dy, dx);
-                            const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-                            const randomDeflection = (Math.random() - 0.5) * 0.5;
-                            ball.vx = Math.cos(angle + randomDeflection) * speed * bounce;
-                            ball.vy = Math.sin(angle + randomDeflection) * speed * bounce;
-                            const overlap = 9 - dist;
-                            ball.x += Math.cos(angle) * overlap;
-                            ball.y += Math.sin(angle) * overlap;
-                        }
-                    });
-
-                    if (ball.y > bottomY + 10) {
-                        ball.active = false;
-                        const bucketIndex = Math.floor((ball.x - (canvas.width / 2 - rows * spacing / 2) + spacing/2) / spacing);
-                        const clampedIndex = Math.max(0, Math.min(multipliers.length - 1, bucketIndex));
-                        onFinish(multipliers[clampedIndex]);
-                    }
-
-                    return ball;
-                });
-
-                nextBalls.forEach(ball => {
-                    if (ball.active) {
-                        ctx.beginPath();
-                        ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
-                        ctx.fillStyle = ball.color;
-                        ctx.fill();
+                        const overlap = 10 - dist;
+                        ball.x += Math.cos(angle) * overlap;
+                        ball.y += Math.sin(angle) * overlap;
                     }
                 });
 
-                return nextBalls.filter(b => b.y < canvas.height);
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.shadowColor = ball.color;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (ball.y > bottomY + 20) {
+                     const relativeX = ball.x - (width / 2 - rows * spacing / 2);
+                     const bucketIndex = Math.floor((relativeX + spacing/2) / spacing);
+                     const clampedIndex = Math.max(0, Math.min(multipliers.length - 1, bucketIndex));
+                     
+                     if (!ball.finished) {
+                         ball.finished = true;
+                         onFinish(multipliers[clampedIndex]);
+                     }
+                } else {
+                    activeBalls.push(ball);
+                }
             });
-
-            animationId = requestAnimationFrame(update);
+            
+            ballsRef.current = activeBalls;
+            animationId = requestAnimationFrame(render);
         };
-        animationId = requestAnimationFrame(update);
+
+        render();
         return () => cancelAnimationFrame(animationId);
-    }, [rows]);
+    }, []);
 
-    return <canvas ref={canvasRef} width={800} height={700} className="w-full h-full object-contain" />;
+    useEffect(() => {
+        if (triggerDrop > 0 && canvasRef.current) {
+             const startX = canvasRef.current.width / 2;
+             ballsRef.current.push({
+                 x: startX + (Math.random() - 0.5) * 10,
+                 y: 10, 
+                 vx: (Math.random() - 0.5) * 2,
+                 vy: 0,
+                 color: Math.random() > 0.5 ? '#ff00ff' : '#D4C28A',
+                 finished: false
+             });
+        }
+    }, [triggerDrop]);
+
+    return (
+        <canvas ref={canvasRef} width={800} height={800} className="w-full h-full object-contain bg-transparent" />
+    );
 };
-
 
 export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, onGameLog }) => {
   const [activeGame, setActiveGame] = useState<GameType>('LOBBY');
@@ -233,8 +246,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const [notification, setNotification] = useState<{msg: string, type: 'win' | 'lose'} | null>(null);
 
   // --- MULTIPLAYER SERVICE ---
-  const { messages: mpMessages, players, sendEvent } = useMultiplayer();
-  const [chatInput, setChatInput] = useState("");
+  const { messages: mpMessages, sendEvent } = useMultiplayer();
 
   // --- UNIVERSAL STATES ---
   const [isPlaying, setIsPlaying] = useState(false);
@@ -267,7 +279,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const [kenoDraw, setKenoDraw] = useState<number[]>([]);
   
   // --- PLINKO STATE ---
-  const [plinkoTrigger, setPlinkoTrigger] = useState(false);
+  const [plinkoDropCount, setPlinkoDropCount] = useState(0);
   const [plinkoHistory, setPlinkoHistory] = useState<number[]>([]);
 
   // --- CRASH STATE ---
@@ -284,7 +296,16 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const [minesRevealed, setMinesRevealed] = useState<boolean[]>(Array(25).fill(false));
   const [minesCount, setMinesCount] = useState(3);
 
-  // --- BLACKJACK STATE (MULTIPLAYER) ---
+  // --- BLACKJACK STATE ---
+  const BOT_NAMES_POOL = ['Lucas', 'Ana', 'Diego', 'Sofía', 'Max', 'Valentina', 'Leo', 'Camila', 'Mateo', 'Isabella'];
+  const CHAT_PHRASES = {
+      HIT: ["Otra.", "Voy.", "Una más.", "Arriesgo.", "Dame."],
+      STAND: ["Me quedo.", "Suficiente.", "Ahí.", "Bien.", "Planto."],
+      BUST: ["Bust.", "Mal.", "Pasé.", "Rayos.", "Fuera."],
+      WIN: ["¡Bien!", "Gané.", "Suerte.", "Vamos.", "Yes!"],
+      LOSE: ["Perdí.", "Cerca.", "Dealer gana.", "Mal.", "Uff."]
+  };
+
   interface BjSeat {
       id: number;
       name: string;
@@ -292,17 +313,15 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       isUser: boolean;
       status: 'WAITING' | 'PLAYING' | 'STOOD' | 'BUST' | 'BLACKJACK' | 'WIN' | 'LOSE' | 'PUSH';
       bet: number;
+      chatMessage?: string;
   }
   
   const [bjDeck, setBjDeck] = useState<any[]>([]);
   const [dealerHand, setDealerHand] = useState<any[]>([]);
   const [bjState, setBjState] = useState<'IDLE' | 'DEALING' | 'PLAYING' | 'DEALER_TURN' | 'ENDED'>('IDLE');
-  const [bjSeats, setBjSeats] = useState<BjSeat[]>([
-      { id: 0, name: 'Sarah99', hand: [], isUser: false, status: 'WAITING', bet: 0 },
-      { id: 1, name: 'TÚ', hand: [], isUser: true, status: 'WAITING', bet: 0 },
-      { id: 2, name: 'CryptoKing', hand: [], isUser: false, status: 'WAITING', bet: 0 }
-  ]);
+  const [bjSeats, setBjSeats] = useState<BjSeat[]>([]);
   const [activeSeatIndex, setActiveSeatIndex] = useState(0);
+  const [bjRoundResults, setBjRoundResults] = useState<string[]>([]); // Results panel state
 
   // --- NOTIFICATION SYSTEM ---
   useEffect(() => {
@@ -317,24 +336,18 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
           updateBalance(amount);
           setNotification({ msg: `+${formatCurrency(amount)} FCT`, type: 'win' });
           onGameLog(gameOverride || activeGame, 'WIN', currentBet, amount, multiplier || (amount/currentBet));
-          sendEvent({ type: 'WIN', user: 'YOU', amount: amount, game: activeGame });
       } else {
           setNotification({ msg: msg, type: 'lose' });
           onGameLog(gameOverride || activeGame, 'LOSS', currentBet, 0, 0);
       }
   };
 
-  const handleChatSend = () => {
-    if(!chatInput.trim()) return;
-    sendEvent({ type: 'CHAT', user: 'YOU', message: chatInput });
-    setChatInput("");
-  };
-
-  // --- BLACKJACK ENGINE ---
+  // --- BLACKJACK ENGINE REFACTORED ---
   const bjSuits = ['♠', '♥', '♣', '♦'];
   const bjValues = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   
   const getBjValue = (hand: any[]) => {
+    if (!hand) return 0;
     let val = 0; let aces = 0;
     hand.forEach(c => {
         if (['J','Q','K'].includes(c.value)) val += 10;
@@ -345,81 +358,89 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     return val;
   };
 
+  const getRandomPhrase = (type: keyof typeof CHAT_PHRASES) => {
+      const phrases = CHAT_PHRASES[type];
+      return phrases[Math.floor(Math.random() * phrases.length)];
+  };
+
   const startBlackjack = () => {
       if (currentBet > balance) return;
       updateBalance(-currentBet);
+      setBjRoundResults([]); 
+
+      const names = [...BOT_NAMES_POOL].sort(() => 0.5 - Math.random());
       
       const deck = bjSuits.flatMap(s => bjValues.map(v => ({ 
           suit: s, value: v, color: (s === '♥' || s === '♦') ? 'text-red-500' : 'text-slate-900' 
       }))).sort(() => Math.random() - 0.5);
       
-      // Init Seats
-      const newSeats = bjSeats.map(s => ({ 
-          ...s, 
-          hand: [deck.pop(), deck.pop()], 
-          status: 'PLAYING' as const, 
-          bet: s.isUser ? currentBet : Math.floor(Math.random() * 500) + 100 
-      }));
-      
-      const dHand = [deck.pop(), deck.pop()];
+      const initialSeats: BjSeat[] = [
+          { id: 0, name: names[0], hand: [deck.pop(), deck.pop()], isUser: false, status: 'PLAYING', bet: Math.floor(Math.random() * 500) + 50 },
+          { id: 1, name: 'TÚ', hand: [deck.pop(), deck.pop()], isUser: true, status: 'PLAYING', bet: currentBet },
+          { id: 2, name: names[1], hand: [deck.pop(), deck.pop()], isUser: false, status: 'PLAYING', bet: Math.floor(Math.random() * 500) + 50 },
+          { id: 3, name: names[2], hand: [deck.pop(), deck.pop()], isUser: false, status: 'PLAYING', bet: Math.floor(Math.random() * 500) + 50 }
+      ];
+
+      const dHand = [deck.pop(), deck.pop()]; 
       
       setBjDeck(deck);
-      setBjSeats(newSeats);
+      setBjSeats(initialSeats);
       setDealerHand(dHand);
       setBjState('PLAYING');
-      setActiveSeatIndex(0); // Start with Player 1 (Bot)
+      setActiveSeatIndex(0); 
   };
 
-  // Blackjack Bot Logic Effect
   useEffect(() => {
       if (activeGame !== 'BLACKJACK' || bjState !== 'PLAYING') return;
-
-      const currentSeat = bjSeats[activeSeatIndex];
+      
+      const currentSeat = bjSeats?.[activeSeatIndex];
+      if (!currentSeat) return;
 
       if (!currentSeat.isUser) {
-          // Bot Turn
           const timer = setTimeout(() => {
               const val = getBjValue(currentSeat.hand);
               if (val < 17) {
-                  // Hit
                   const card = bjDeck.pop();
-                  const newHand = [...currentSeat.hand, card];
+                  const newHand = [...(currentSeat.hand || []), card];
                   const newVal = getBjValue(newHand);
                   const status = newVal > 21 ? 'BUST' : 'PLAYING';
-                  
-                  updateSeat(activeSeatIndex, { hand: newHand, status });
-                  if (status === 'BUST') nextTurn();
-                  // If playing, effect will trigger again for next card
+                  let chat = getRandomPhrase('HIT');
+                  if (status === 'BUST') chat = getRandomPhrase('BUST');
+                  updateSeat(activeSeatIndex, { hand: newHand, status, chatMessage: chat });
+                  if (status === 'BUST') setTimeout(nextTurn, 800);
               } else {
-                  // Stand
-                  updateSeat(activeSeatIndex, { status: 'STOOD' });
-                  nextTurn();
+                  updateSeat(activeSeatIndex, { status: 'STOOD', chatMessage: getRandomPhrase('STAND') });
+                  setTimeout(nextTurn, 800);
               }
-          }, 1000); // 1s think time
+          }, 1000); 
           return () => clearTimeout(timer);
       } else {
-          // User Turn - Check blackjack immediately
           const val = getBjValue(currentSeat.hand);
-          if (val === 21 && currentSeat.hand.length === 2) {
+          if (val === 21 && currentSeat.hand?.length === 2) {
               updateSeat(activeSeatIndex, { status: 'BLACKJACK' });
               nextTurn();
-          }
-          if (val > 21) {
+          } else if (val > 21) {
               updateSeat(activeSeatIndex, { status: 'BUST' });
               nextTurn();
           }
       }
   }, [activeGame, bjState, activeSeatIndex, bjSeats]); 
 
+  useEffect(() => {
+      const timer = setTimeout(() => {
+           setBjSeats(prev => prev.map(s => ({ ...s, chatMessage: undefined })));
+      }, 3000);
+      return () => clearTimeout(timer);
+  }, [bjSeats]);
+
   const updateSeat = (idx: number, updates: Partial<BjSeat>) => {
       setBjSeats(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
   };
 
   const nextTurn = () => {
-      if (activeSeatIndex < 2) {
+      if (activeSeatIndex < 3) {
           setActiveSeatIndex(prev => prev + 1);
       } else {
-          // All players done, Dealer Turn
           setBjState('DEALER_TURN');
           playDealerTurn();
       }
@@ -428,7 +449,6 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const playDealerTurn = async () => {
       let dHand = [...dealerHand];
       let deck = [...bjDeck]; 
-      
       const drawLoop = setInterval(() => {
            if (getBjValue(dHand) < 17) {
                dHand.push(deck.pop());
@@ -438,42 +458,68 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                setBjState('ENDED');
                finalizeRound(dHand);
            }
-      }, 800);
+      }, 1000);
   };
 
   const finalizeRound = (finalDealerHand: any[]) => {
       const dVal = getBjValue(finalDealerHand);
-      
+      const results: string[] = [];
+      let userWonAmt = 0;
+
+      results.push(`DEALER: ${dVal > 21 ? 'BUST' : dVal}`);
+
       setBjSeats(prev => prev.map(s => {
-          if (s.status === 'BUST') return { ...s, status: 'LOSE' };
+          if (s.status === 'BUST') {
+              if(s.isUser) results.push("TÚ: BUST");
+              return { ...s, status: 'LOSE', chatMessage: getRandomPhrase('LOSE') };
+          }
           
           const pVal = getBjValue(s.hand);
           let result: any = 'LOSE';
+          let chat = getRandomPhrase('LOSE');
           let payout = 0;
-
+          
           if (dVal > 21 || pVal > dVal) {
               result = 'WIN';
-              payout = s.status === 'BLACKJACK' ? s.bet * 2.5 : s.bet * 2;
+              chat = getRandomPhrase('WIN');
+              payout = s.status === 'BLACKJACK' ? Math.floor(s.bet * 2.5) : Math.floor(s.bet * 2);
           } else if (pVal === dVal) {
               result = 'PUSH';
+              chat = "Empate.";
               payout = s.bet;
           }
-
+          
           if (s.isUser) {
-              if (payout > 0) notify(payout, result === 'PUSH' ? 'Empate' : 'Ganaste', 'BLACKJACK', payout/s.bet);
-              else notify(0, 'La casa gana', 'BLACKJACK', 0);
+              if (result === 'WIN') {
+                  results.push(`TÚ: GANASTE ${payout}`);
+                  userWonAmt = payout;
+              } else if (result === 'PUSH') {
+                  results.push(`TÚ: EMPATE`);
+                  userWonAmt = payout;
+              } else {
+                  results.push(`TÚ: PERDISTE`);
+              }
           }
           
-          return { ...s, status: result };
+          return { ...s, status: result, chatMessage: chat };
       }));
+
+      if (userWonAmt > 0) {
+          updateBalance(userWonAmt);
+          onGameLog('BLACKJACK', 'WIN', currentBet, userWonAmt, userWonAmt/currentBet);
+      } else {
+          onGameLog('BLACKJACK', 'LOSS', currentBet, 0, 0);
+      }
+      
+      setBjRoundResults(results);
   };
 
   const hitBj = () => {
       const seat = bjSeats[activeSeatIndex];
+      if (!seat) return;
       const newHand = [...seat.hand, bjDeck.pop()];
       const val = getBjValue(newHand);
       updateSeat(activeSeatIndex, { hand: newHand });
-      
       if (val > 21) {
           updateSeat(activeSeatIndex, { status: 'BUST' });
           setTimeout(nextTurn, 500);
@@ -481,6 +527,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   };
 
   const standBj = () => {
+      const seat = bjSeats[activeSeatIndex];
+      if (!seat) return;
       updateSeat(activeSeatIndex, { status: 'STOOD' });
       nextTurn();
   };
@@ -494,15 +542,9 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       setTriviaQ(null);
       setShowTriviaModal(false);
 
-      // 6 segments, 60 degrees each.
-      // Index 0 (GEO, Blue) is at top.
       const spins = 5;
-      const targetIndex = Math.floor(Math.random() * 6); // 0-5
+      const targetIndex = Math.floor(Math.random() * 6);
       const degreesPerSegment = 360 / 6;
-      
-      const targetAngle = (spins * 360) + (targetIndex * degreesPerSegment) + (degreesPerSegment / 2);
-      
-      // We reverse mapping for conic gradient rotation
       const finalRotation = 2160 + (360 - (targetIndex * 60)); 
       setTriviaRotation(finalRotation);
 
@@ -543,7 +585,26 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
 
   // --- ROULETTE ENGINE ---
   const europeanWheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+  const redNumbers = [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3];
   
+  const generateWheelGradient = () => {
+    let g = `conic-gradient(from 0deg, `;
+    const segSize = 360 / 37;
+    const order = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+    
+    order.forEach((num, i) => {
+        let color = '#000000'; 
+        if (num === 0) color = '#10b981'; 
+        else if (redNumbers.includes(num)) color = '#dc2626'; 
+        
+        const start = i * segSize;
+        const end = (i + 1) * segSize;
+        g += `${color} ${start}deg ${end}deg${i === 36 ? '' : ', '}`;
+    });
+    g += ')';
+    return g;
+  };
+
   const spinRoulette = () => {
     if (!rouletteBetType || currentBet > balance) return;
     updateBalance(-currentBet);
@@ -551,25 +612,12 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     setRouletteSpinning(true);
     setRouletteResultNumber(null);
     
-    // Determine Result
     const randomIndex = Math.floor(Math.random() * europeanWheel.length);
     const resultNum = europeanWheel[randomIndex];
-    
-    // Angle calculation: 360 deg total. 37 segments. Each segment ~9.73 deg.
-    // Index 0 (0) is at top (0 deg).
-    // To land on index I, we must rotate so index I is at 0.
-    // Clockwise rotation of X degrees moves index at X to 0? No.
-    // Clockwise rotation moves the wheel. The fixed pointer is at top.
-    // If we rotate +9.73 deg, index 36 (left of 0) moves to top.
-    // So target angle = Index * segmentAngle? No.
-    // Target Angle = 360 - (Index * segmentAngle).
-    
     const segmentAngle = 360 / 37;
-    const targetRotation = (360 - (randomIndex * segmentAngle)); 
+    const targetRotation = 360 - (randomIndex * segmentAngle);
     const totalRotation = rouletteAngle + 1800 + (targetRotation - (rouletteAngle % 360)); 
-    // Add extra spins + delta to reach target
-    
-    setRouletteAngle(rouletteAngle + 1800 + (360 - (rouletteAngle % 360)) + targetRotation);
+    setRouletteAngle(totalRotation);
 
     setTimeout(() => {
         setRouletteSpinning(false);
@@ -577,7 +625,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
         setIsPlaying(false);
         
         let win = 0;
-        const isRed = [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3].includes(resultNum);
+        const isRed = redNumbers.includes(resultNum);
         const isBlack = resultNum !== 0 && !isRed;
         
         if (rouletteBetType === 'GREEN' && resultNum === 0) win = currentBet * 36;
@@ -594,23 +642,15 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     updateBalance(-currentBet);
     setIsPlaying(true);
     setSlotsSpinning(true);
-
-    // Visual Spin Start
     setTimeout(() => {
         const res = [
             slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)],
             slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)],
             slotsSymbols[Math.floor(Math.random() * slotsSymbols.length)]
         ];
-        
         setSlotsReels(res);
         setSlotsSpinning(false);
         setIsPlaying(false);
-
-        // Check Win
-        // 777 = Jackpot 50x
-        // 3 of a kind = 10x
-        // 2 of a kind = 2x
         let win = 0;
         if (res[0] === res[1] && res[1] === res[2]) {
             if (res[0] === '7️⃣') win = currentBet * 50;
@@ -619,7 +659,6 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
         } else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) {
             win = currentBet * 2;
         }
-
         if (win > 0) notify(win, "¡Premio de Tragamonedas!", 'SLOTS', win/currentBet);
         else notify(0, "Inténtalo de nuevo", 'SLOTS', 0);
     }, 2000);
@@ -638,11 +677,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
           if (display >= targetResult) {
                clearInterval(interval);
                setLimboResult(targetResult);
-               if (targetResult >= limboTarget) {
-                    notify(currentBet * limboTarget, `Objetivo ${limboTarget}x Alcanzado`, 'LIMBO', limboTarget);
-                } else {
-                    notify(0, `Resultado: ${targetResult.toFixed(2)}x`, 'LIMBO', 0);
-                }
+               if (targetResult >= limboTarget) notify(currentBet * limboTarget, `Objetivo ${limboTarget}x Alcanzado`, 'LIMBO', limboTarget);
+               else notify(0, `Resultado: ${targetResult.toFixed(2)}x`, 'LIMBO', 0);
           }
       }, 10);
   };
@@ -683,11 +719,11 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const dropPlinko = () => {
       if (currentBet > balance) return;
       updateBalance(-currentBet);
-      setPlinkoTrigger(prev => !prev); 
+      setPlinkoDropCount(prev => prev + 1); 
   };
   
   const onPlinkoResult = (mult: number) => {
-      const win = currentBet * mult;
+      const win = Math.floor(currentBet * mult);
       setPlinkoHistory(prev => [mult, ...prev].slice(0, 5));
       if (win > 0) notify(win, `Plinko x${mult}`, 'PLINKO', mult);
       else notify(0, "Plinko x0", 'PLINKO', 0);
@@ -721,7 +757,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
   const cashOutCrash = () => {
       cancelAnimationFrame(crashRef.current);
       setIsPlaying(false);
-      const win = currentBet * crashMultiplier;
+      const win = Math.floor(currentBet * crashMultiplier);
       notify(win, `Cobrado a ${crashMultiplier.toFixed(2)}x`, 'CRASH', crashMultiplier);
   };
 
@@ -761,7 +797,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
       for(let i=0; i<safeRevealed; i++) mult *= 1.15;
       setIsPlaying(false);
       setMinesRevealed(Array(25).fill(true));
-      notify(currentBet * mult, `Cobrado x${mult.toFixed(2)}`, 'MINES', mult);
+      const win = Math.floor(currentBet * mult);
+      notify(win, `Cobrado x${mult.toFixed(2)}`, 'MINES', mult);
   };
 
   const rollDice = () => {
@@ -772,7 +809,8 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
     setTimeout(() => {
         if (roll <= diceValue) {
             const multiplier = 98 / diceValue;
-            notify(currentBet * multiplier, `Ganaste (x${multiplier.toFixed(2)})`, 'DICE', multiplier);
+            const win = Math.floor(currentBet * multiplier);
+            notify(win, `Ganaste (x${multiplier.toFixed(2)})`, 'DICE', multiplier);
         } else {
             notify(0, "Fallaste", 'DICE', 0);
         }
@@ -785,7 +823,7 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
           case 'PLINKO': return "Suelta la bola desde la cima. ¡Apunta a los bordes para premios grandes!";
           case 'CRASH': return "Retírate antes de que el cohete explote. ¿Hasta dónde te atreves a llegar?";
           case 'MINES': return "Encuentra diamantes, evita las bombas. Puedes cobrar en cualquier momento.";
-          case 'BLACKJACK': return "Mesa multijugador. Vence al dealer con otros jugadores en vivo (IA). Blackjack paga 3:2.";
+          case 'BLACKJACK': return "Mesa multijugador con 3 Bots. Vence al dealer. Blackjack paga 3:2.";
           case 'ROULETTE': return "Ruleta Europea. Apuesta a Rojo, Negro o al Cero Verde. Pagos 2x y 36x.";
           case 'SLOTS': return "Alinea 3 símbolos iguales. 777 paga 50x. Diamantes 25x.";
           default: return "";
@@ -801,540 +839,456 @@ export const GamesView: React.FC<GamesViewProps> = ({ balance, updateBalance, on
                     <h2 className="text-4xl font-casino font-bold text-white mb-2 tracking-tight">LOBBY</h2>
                     <p className="text-[#D4C28A] font-medium">Originals & Classics</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setActiveGame('TRIVIA')} className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 rounded-xl text-white font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-purple-900/40">
-                        <Brain size={18} /> Trivia Royale
-                    </button>
-                    <div className="bg-[#1C1C1E] px-6 py-3 rounded-xl border border-white/10 flex items-center gap-3 shadow-lg">
-                        <Zap className="text-[#D4C28A] fill-[#D4C28A]" size={20} />
-                        <span className="text-white font-mono font-bold text-lg">{formatCurrency(balance)}</span>
-                    </div>
-                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {[
-                    { id: 'TRIVIA', name: 'Trivia Royale', icon: Brain, color: 'text-purple-400', img: 'https://images.unsplash.com/photo-1633511090164-b43840ea1607?q=80&w=2070' },
-                    { id: 'BLACKJACK', name: 'Blackjack Live', icon: Spade, color: 'text-white', img: 'https://images.unsplash.com/photo-1605870445919-838d190e8e1b?q=80&w=2072' },
-                    { id: 'SLOTS', name: 'Fintech Slots', icon: Spline, color: 'text-yellow-300', img: 'https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070' },
-                    { id: 'MINES', name: 'Mines', icon: Bomb, color: 'text-yellow-500', img: 'https://images.unsplash.com/photo-1575550959106-5a7defe28b56?q=80&w=2070' },
-                    { id: 'CRASH', name: 'Crash', icon: TrendingUp, color: 'text-rose-500', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072' },
-                    { id: 'ROULETTE', name: 'Roulette', icon: StopCircle, color: 'text-red-500', img: 'https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070' },
-                    { id: 'PLINKO', name: 'Plinko', icon: ArrowDown, color: 'text-pink-500', img: 'https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074' },
-                    { id: 'LIMBO', name: 'Limbo', icon: Target, color: 'text-indigo-400', img: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070' },
-                    { id: 'KENO', name: 'Keno', icon: Grid3X3, color: 'text-purple-500', img: 'https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070' },
-                    { id: 'DICE', name: 'Dice', icon: Dices, color: 'text-emerald-500', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070' },
-                ].map((game) => (
-                    <div key={game.id} onClick={() => setActiveGame(game.id as GameType)} className="group relative h-56 rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-[#D4C28A] transition-all shadow-2xl hover:translate-y-[-5px]">
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" style={{ backgroundImage: `url(${game.img})` }}></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0C] via-transparent to-transparent"></div>
-                        <div className="absolute bottom-0 p-6 w-full">
-                            <div className={`flex items-center gap-3 font-bold text-white text-xl`}>
-                                <div className={`p-2 rounded-lg bg-black/60 backdrop-blur-sm ${game.color} border border-white/10`}>
-                                    <game.icon size={24} />
-                                </div>
+                {LOBBY_GAMES.map((game) => (
+                    <button 
+                        key={game.id}
+                        onClick={() => setActiveGame(game.id as GameType)}
+                        className={`relative aspect-[4/3] rounded-2xl overflow-hidden group hover:scale-[1.02] transition-all duration-300 shadow-2xl ${game.gradient}`}
+                    >
+                        {/* ICON & TEXT ONLY - NO IMAGES */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                            <div className="p-4 rounded-full bg-white/20 backdrop-blur-sm mb-4 group-hover:bg-white/30 transition-colors">
+                                <game.icon size={32} className="text-white drop-shadow-md" />
+                            </div>
+                            <h3 className="text-xl font-heading font-bold text-white uppercase tracking-wider drop-shadow-md">
                                 {game.name}
+                            </h3>
+                            <div className="mt-4 px-3 py-1 rounded-full border border-white/20 text-[10px] font-bold text-white uppercase bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                Jugar Ahora
                             </div>
                         </div>
-                    </div>
+                    </button>
                 ))}
             </div>
         </div>
     );
   }
 
+  // GAME CONTAINER RENDER (Never Blank)
   return (
-      <div className="h-full flex flex-col p-2 md:p-6 max-w-[1600px] mx-auto overflow-hidden">
-          {/* TOP BAR */}
-          <div className="flex justify-between items-center mb-4 bg-[#1a1d21] p-3 rounded-xl border border-white/5 shadow-lg flex-shrink-0">
-              <button onClick={() => setActiveGame('LOBBY')} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-bold uppercase text-xs tracking-wider">
-                  <ArrowLeft size={16}/> Lobby
-              </button>
-              <div className="text-white font-bold tracking-widest text-sm md:text-base hidden md:block">{activeGame}</div>
-              <div className="flex items-center gap-2 text-[#D4C28A] font-mono font-bold">
-                  <div className="bg-[#0f1114] px-4 py-2 rounded-lg border border-[#D4C28A]/20 shadow-inner flex items-center gap-2 text-sm md:text-base">
-                    <Coins size={16} />
-                    {formatCurrency(balance)}
-                  </div>
-              </div>
-          </div>
+    <div className="flex flex-col h-full bg-[#050505]">
+        {/* Game Header */}
+        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#0B0B0C]">
+            <button onClick={() => setActiveGame('LOBBY')} className="flex items-center gap-2 text-slate-400 hover:text-white">
+                <ArrowLeft size={20} /> <span className="hidden md:inline">Volver al Lobby</span>
+            </button>
+            <div className="font-heading font-bold text-[#D4C28A] text-lg">
+                {activeGame.replace('_', ' ')}
+            </div>
+            <div className="flex items-center gap-4">
+                <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 bg-white/5 px-3 py-1 rounded-full">
+                    <Info size={14} /> {getGameDescription()}
+                </div>
+            </div>
+        </div>
 
-          {notification && (
-              <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-8 py-4 rounded-xl font-bold shadow-2xl z-50 animate-bounce flex items-center gap-3 backdrop-blur-md border border-white/10 ${notification.type === 'win' ? 'bg-[#1C8C6E]/90 text-white' : 'bg-red-600/90 text-white'}`}>
-                  {notification.type === 'win' ? <Crown size={20} className="fill-current"/> : <Skull size={20}/>}
-                  {notification.msg}
-              </div>
-          )}
-
-          <div className="flex-1 flex flex-col-reverse md:flex-row gap-4 overflow-hidden h-full min-h-0">
-              
-              {/* SIDEBAR CONTROLS */}
-              <div className="w-full md:w-80 flex-shrink-0 bg-[#1a1d21] rounded-xl p-4 md:p-6 border border-white/5 flex flex-col gap-4 shadow-xl overflow-y-auto h-auto md:h-full z-20">
-                  {/* Common Bet Input */}
-                  <div>
-                      <div className="flex justify-between text-xs text-slate-400 mb-2 font-bold uppercase">
-                          <span>Apuesta</span>
-                          <span>Max: 5000</span>
-                      </div>
-                      <div className="relative mb-2">
-                          <input 
-                              type="number" 
-                              value={currentBet}
-                              onChange={(e) => setCurrentBet(Math.max(0, parseFloat(e.target.value) || 0))}
-                              disabled={isPlaying || (activeGame === 'BLACKJACK' && bjState === 'PLAYING')}
-                              className="w-full bg-[#0f1114] border border-white/10 rounded-lg py-3 px-12 text-white font-mono focus:border-[#D4C28A] outline-none shadow-inner"
-                          />
-                          <Coins size={16} className="absolute left-4 top-4 text-slate-500" />
-                          <div className="absolute right-2 top-2 flex gap-1">
-                              <button onClick={() => setCurrentBet(b => Math.floor(b/2))} className="px-2 py-1 bg-[#24282e] rounded text-xs text-slate-400 hover:text-white hover:bg-[#2f3543]">½</button>
-                              <button onClick={() => setCurrentBet(b => b*2)} className="px-2 py-1 bg-[#24282e] rounded text-xs text-slate-400 hover:text-white hover:bg-[#2f3543]">2x</button>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Roulette Bets */}
-                  {activeGame === 'ROULETTE' && (
-                      <div className="grid grid-cols-3 gap-2">
-                          <button onClick={() => setRouletteBetType('RED')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'RED' ? 'bg-red-600 border-white text-white' : 'bg-red-900/40 border-red-600/30 text-red-400 hover:bg-red-900/60'}`}>
-                              RED (2x)
-                          </button>
-                          <button onClick={() => setRouletteBetType('GREEN')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'GREEN' ? 'bg-green-600 border-white text-white' : 'bg-green-900/40 border-green-600/30 text-green-400 hover:bg-green-900/60'}`}>
-                              0 (36x)
-                          </button>
-                          <button onClick={() => setRouletteBetType('BLACK')} className={`py-3 rounded-lg font-bold border ${rouletteBetType === 'BLACK' ? 'bg-slate-700 border-white text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
-                              BLACK (2x)
-                          </button>
-                      </div>
-                  )}
-
-                  {/* Game Specific Inputs */}
-                  {activeGame === 'LIMBO' && (
-                      <div>
-                          <label className="text-xs text-slate-400 font-bold uppercase mb-2 block">Objetivo (x)</label>
-                          <input 
-                            type="number" 
-                            step="0.01"
-                            value={limboTarget}
-                            onChange={(e) => setLimboTarget(parseFloat(e.target.value))}
-                            className="w-full bg-[#0f1114] border border-white/10 rounded-lg py-3 px-4 text-white font-mono mb-2 focus:border-[#D4C28A] outline-none"
-                          />
-                      </div>
-                  )}
-
-                  {activeGame === 'MINES' && !isPlaying && (
-                      <div>
-                           <label className="text-xs text-slate-400 font-bold uppercase mb-2 block">Minas</label>
-                           <div className="grid grid-cols-5 gap-2">
-                               {[1, 3, 5, 10, 20].map(m => (
-                                   <button key={m} onClick={() => setMinesCount(m)} className={`p-2 rounded text-xs font-bold transition-all ${minesCount === m ? 'bg-[#D4C28A] text-black shadow-lg shadow-[#D4C28A]/20' : 'bg-[#24282e] text-slate-400 hover:bg-[#2f3543]'}`}>
-                                       {m}
-                                   </button>
-                               ))}
-                           </div>
-                      </div>
-                  )}
-                  
-                  {activeGame === 'DICE' && (
-                       <div>
-                            <div className="flex justify-between text-xs text-slate-400 font-bold uppercase mb-2">
-                                <span>Chance: {diceValue}%</span>
-                                <span>Multi: {(98/diceValue).toFixed(2)}x</span>
-                            </div>
-                            <input 
-                                type="range" 
-                                min="2" max="98" 
-                                value={diceValue} 
-                                onChange={(e) => setDiceValue(parseInt(e.target.value))}
-                                className="w-full accent-[#1C8C6E] cursor-pointer"
-                            />
-                       </div>
-                  )}
-
-                  {/* Main Action Button */}
-                  <button 
-                      onClick={() => {
-                          if (activeGame === 'TRIVIA') spinTriviaWheel();
-                          if (activeGame === 'LIMBO') playLimbo();
-                          if (activeGame === 'BLACKJACK') {
-                              if (bjState === 'PLAYING' && bjSeats[activeSeatIndex].isUser) hitBj();
-                              else startBlackjack();
-                          }
-                          if (activeGame === 'PLINKO') dropPlinko();
-                          if (activeGame === 'CRASH') {
-                              if (isPlaying) cashOutCrash();
-                              else startCrash();
-                          }
-                          if (activeGame === 'MINES') {
-                              if (isPlaying) cashOutMines();
-                              else startMines();
-                          }
-                          if (activeGame === 'KENO') playKeno();
-                          if (activeGame === 'DICE') rollDice();
-                          if (activeGame === 'ROULETTE') spinRoulette();
-                          if (activeGame === 'SLOTS') spinSlots();
-                      }}
-                      disabled={
-                          (activeGame === 'TRIVIA' && isPlaying) ||
-                          (activeGame === 'ROULETTE' && (isPlaying || !rouletteBetType)) ||
-                          (activeGame === 'SLOTS' && isPlaying) ||
-                          (activeGame === 'BLACKJACK' && bjState === 'PLAYING' && !bjSeats[activeSeatIndex].isUser) ||
-                          (activeGame === 'MINES' && false) || 
-                          (activeGame === 'KENO' && isPlaying) ||
-                          (activeGame === 'CRASH' && crashed)
-                      }
-                      className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]
-                      ${activeGame === 'BLACKJACK' && bjState === 'PLAYING'
-                        ? (bjSeats[activeSeatIndex].isUser ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-400 cursor-not-allowed')
-                        : activeGame === 'TRIVIA' && isPlaying
-                            ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-not-allowed opacity-50'
-                            : activeGame === 'CRASH' && isPlaying
-                                ? 'bg-[#D4C28A] hover:bg-[#bfa566] text-black shadow-[#D4C28A]/20'
-                                : activeGame === 'MINES' && isPlaying
-                                    ? 'bg-[#1C8C6E] text-white hover:brightness-110'
-                                    : 'bg-[#1C8C6E] hover:bg-[#167058] text-white shadow-[#1C8C6E]/20'
-                      }`}
-                  >
-                      {activeGame === 'TRIVIA' ? (isPlaying ? 'GIRANDO...' : 'GIRAR RUEDA') :
-                       activeGame === 'BLACKJACK' && bjState === 'PLAYING' ? (bjSeats[activeSeatIndex].isUser ? 'PEDIR CARTA' : `TURNO: ${bjSeats[activeSeatIndex].name}`) : 
-                       activeGame === 'CRASH' && isPlaying ? 'RETIRAR AHORA' :
-                       activeGame === 'MINES' && isPlaying ? 'COBRAR' : 
-                       activeGame === 'ROULETTE' && isPlaying ? 'GIRANDO...' :
-                       'JUGAR'}
-                  </button>
-
-                  {/* Secondary Action for Blackjack */}
-                  {activeGame === 'BLACKJACK' && bjState === 'PLAYING' && bjSeats[activeSeatIndex].isUser && (
-                       <button onClick={standBj} className="w-full py-4 rounded-xl font-bold text-lg bg-[#2f3543] hover:bg-[#3a4150] text-white transition-all">
-                           PLANTARSE
-                       </button>
-                  )}
-
-                  <div className="mt-auto p-4 rounded-lg bg-[#0f1114] border border-white/5 text-xs text-slate-400 leading-relaxed hidden md:block">
-                      <div className="flex items-center gap-2 mb-2 text-white font-bold">
-                          <Info size={14} className="text-[#D4C28A]" /> Cómo jugar
-                      </div>
-                      {getGameDescription()}
-                  </div>
-              </div>
-
-              {/* GAME DISPLAY AREA */}
-              <div className="flex-1 bg-[#0f1114] rounded-xl border border-white/5 relative overflow-hidden shadow-inner flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px]">
-                  
-                  {activeGame !== 'LOBBY' && (
-                    <>
-                        <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm transition-all duration-1000 z-0"
-                             style={{
-                                 backgroundImage: 
-                                    activeGame === 'TRIVIA' ? 'url("https://images.unsplash.com/photo-1633511090164-b43840ea1607?q=80&w=2070")' :
-                                    activeGame === 'DICE' ? 'url("https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070")' :
-                                    activeGame === 'KENO' ? 'url("https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?q=80&w=2070")' :
-                                    activeGame === 'LIMBO' ? 'url("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070")' :
-                                    activeGame === 'MINES' ? 'url("https://images.unsplash.com/photo-1575550959106-5a7defe28b56?q=80&w=2070")' :
-                                    activeGame === 'PLINKO' ? 'url("https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=2074")' :
-                                    activeGame === 'ROULETTE' ? 'url("https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070")' :
-                                    activeGame === 'SLOTS' ? 'url("https://images.unsplash.com/photo-1518893494013-481c1d8ed3fd?q=80&w=2070")' : 
-                                    activeGame === 'CRASH' ? 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072")' : 
-                                    activeGame === 'BLACKJACK' ? 'none' : 'none'
-                             }}
-                        ></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/80 to-transparent z-0"></div>
-                    </>
-                  )}
-
-                  {/* --- BLACKJACK RENDER --- */}
-                  {activeGame === 'BLACKJACK' && (
-                      <div className="w-full h-full flex flex-col justify-between p-2 md:p-8 relative overflow-hidden">
-                          {/* Felt Background */}
-                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] bg-[#0d2e1c] z-0 opacity-100"></div>
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_#000000_90%)] z-0 pointer-events-none"></div>
-                          
-                          {/* Dealer Area */}
-                          <div className="flex flex-col items-center z-10 pt-4">
-                               <div className="flex gap-[-2rem]">
-                                  {dealerHand.map((c, i) => (
-                                      <div key={i} className="transform transition-transform hover:-translate-y-4" style={{ marginLeft: i > 0 ? '-2rem' : 0 }}>
-                                         <Card suit={c.suit} value={c.value} color={c.color} hidden={bjState === 'PLAYING' && i === 1} />
-                                      </div>
-                                  ))}
-                               </div>
-                               <div className="mt-4 bg-black/40 px-4 py-1 rounded-full text-white font-mono text-sm border border-white/10 backdrop-blur">
-                                   DEALER {bjState === 'PLAYING' ? '?' : getBjValue(dealerHand)}
-                               </div>
-                          </div>
-
-                          {/* Multiplayer Info & Chat */}
-                          <div className="absolute top-4 left-4 z-20 hidden md:block">
-                              <div className="bg-black/40 p-2 rounded-lg border border-white/10 backdrop-blur-md">
-                                  <div className="flex items-center gap-2 text-[#1C8C6E] text-xs font-bold uppercase mb-2">
-                                      <div className="w-2 h-2 rounded-full bg-[#1C8C6E] animate-pulse"></div>
-                                      Live Table
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* Game Canvas / Area */}
+            <div className="flex-1 relative bg-[#0f1114] flex flex-col items-center justify-center overflow-hidden">
+                 
+                 {/* TRIVIA */}
+                 {activeGame === 'TRIVIA' && (
+                     <div className="w-full h-full flex flex-col items-center justify-center relative bg-gradient-to-b from-indigo-900 to-black">
+                         {/* Wheel Component */}
+                         <div className="relative w-80 h-80 md:w-96 md:h-96 rounded-full border-8 border-[#D4C28A] shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-transform duration-[3000ms] cubic-bezier(0.2,0.8,0.2,1)"
+                              style={{ transform: `rotate(${triviaRotation}deg)`, background: generateWheelGradient().replace('37', '6').replace(/#000000|#10b981|#dc2626/g, (match) => { return match; /* Placeholder, replaced below */ }) }}>
+                              {/* Custom Conic for Trivia */}
+                              <div className="absolute inset-0 rounded-full overflow-hidden" style={{ background: `conic-gradient(
+                                  #2563eb 0deg 60deg,
+                                  #ca8a04 60deg 120deg,
+                                  #db2777 120deg 180deg,
+                                  #16a34a 180deg 240deg,
+                                  #9333ea 240deg 300deg,
+                                  #ea580c 300deg 360deg
+                              )`}}></div>
+                              
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-20 h-20 bg-[#0B0B0C] rounded-full border-4 border-[#D4C28A] z-20 flex items-center justify-center shadow-xl">
+                                      <Brain className="text-white" size={32} />
                                   </div>
-                                  {mpMessages.slice(-2).map((msg, i) => (
-                                      <div key={i} className="text-[10px] text-white">
-                                          <span className="text-[#D4C28A] font-bold">{msg.user}: </span>{msg.message}
-                                      </div>
-                                  ))}
                               </div>
-                          </div>
-
-                          {/* 3 Seats Area */}
-                          <div className="flex justify-center items-end gap-2 md:gap-8 z-10 pb-4 md:pb-0 w-full">
-                              {bjSeats.map((seat, idx) => (
-                                  <div key={seat.id} className={`flex flex-col items-center transition-all duration-300 ${activeSeatIndex === idx && bjState === 'PLAYING' ? 'scale-110 -translate-y-4' : 'scale-90 opacity-80'}`}>
-                                      {/* Seat Info */}
-                                      <div className={`mb-2 px-3 py-1 rounded-full text-xs font-bold border backdrop-blur flex items-center gap-1
-                                          ${seat.isUser ? 'bg-[#D4C28A] text-black border-[#D4C28A]' : 'bg-black/50 text-white border-white/10'}
-                                          ${activeSeatIndex === idx && bjState === 'PLAYING' ? 'ring-2 ring-white shadow-lg' : ''}
-                                      `}>
-                                          {seat.isUser ? <User size={12}/> : <Users size={12}/>}
-                                          {seat.name}
-                                          <span className="font-mono ml-1 opacity-70">{getBjValue(seat.hand)}</span>
-                                      </div>
-                                      
-                                      {/* Cards */}
-                                      <div className="flex h-24 md:h-32">
-                                          {seat.hand.map((c, i) => (
-                                              <div key={i} className="transform origin-bottom hover:-translate-y-2 transition-transform" style={{ marginLeft: i > 0 ? '-1.5rem' : 0 }}>
-                                                  <Card suit={c.suit} value={c.value} color={c.color} small={window.innerWidth < 768} />
-                                              </div>
-                                          ))}
-                                      </div>
-
-                                      {/* Status Chips */}
-                                      <div className="mt-2 h-6">
-                                          {seat.status === 'BLACKJACK' && <span className="text-[10px] bg-purple-500 text-white px-2 py-0.5 rounded font-bold animate-pulse">BLACKJACK</span>}
-                                          {seat.status === 'BUST' && <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold">BUST</span>}
-                                          {seat.status === 'STOOD' && <span className="text-[10px] bg-slate-500 text-white px-2 py-0.5 rounded font-bold">STAND</span>}
-                                          {seat.status === 'WIN' && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold">WIN</span>}
-                                          {seat.status === 'LOSE' && <span className="text-[10px] bg-red-900 text-red-200 px-2 py-0.5 rounded font-bold">LOSE</span>}
-                                          {seat.status === 'PUSH' && <span className="text-[10px] bg-yellow-600 text-white px-2 py-0.5 rounded font-bold">PUSH</span>}
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-
-                  {/* --- SLOTS RENDER --- */}
-                  {activeGame === 'SLOTS' && (
-                      <div className="relative z-10 p-8 bg-black/60 rounded-3xl border-4 border-[#D4C28A] shadow-[0_0_50px_rgba(212,194,138,0.2)]">
-                           <div className="flex gap-4">
-                               {slotsReels.map((symbol, i) => (
-                                   <div key={i} className="w-24 h-40 bg-white rounded-xl border-4 border-slate-300 flex items-center justify-center text-6xl shadow-inner relative overflow-hidden">
-                                        <div className={`transition-all duration-100 ${slotsSpinning ? 'blur-sm scale-y-150 opacity-50' : 'blur-0 scale-100 opacity-100'}`}>
-                                            {symbol}
-                                        </div>
-                                        {/* Scanlines */}
-                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-10 bg-[length:100%_2px,3px_100%] pointer-events-none"></div>
-                                   </div>
-                               ))}
-                           </div>
-                           <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#D4C28A] px-4 py-1 rounded-full text-black font-bold text-xs uppercase tracking-widest border border-white">
-                               Fintech Paylines
-                           </div>
-                      </div>
-                  )}
-
-                  {/* --- ROULETTE RENDER --- */}
-                  {activeGame === 'ROULETTE' && (
-                      <div className="relative z-10 flex flex-col items-center">
-                           <div className="w-80 h-80 rounded-full border-8 border-[#2e1d0f] shadow-2xl relative flex items-center justify-center bg-[#0d2e1c] overflow-hidden">
-                               {/* Wheel Image */}
-                               <img 
-                                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Roulette_wheel.svg/1024px-Roulette_wheel.svg.png" 
-                                  alt="Roulette"
-                                  className="w-full h-full object-cover transition-transform duration-[4000ms] cubic-bezier(0.25, 0.1, 0.25, 1)"
-                                  style={{ transform: `rotate(${rouletteAngle}deg)` }}
-                               />
-                               {/* Pointer */}
-                               <div className="absolute top-0 w-4 h-8 bg-white shadow-lg z-20" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }}></div>
-                           </div>
-                           
-                           {/* Betting Board rendered in sidebar, visual result here */}
-                           {rouletteResultNumber !== null && !rouletteSpinning && (
-                               <div className="mt-8 bg-black/80 px-8 py-4 rounded-xl border border-[#D4C28A] animate-bounce">
-                                   <div className={`text-4xl font-bold ${[0].includes(rouletteResultNumber) ? 'text-green-500' : [32, 19, 21, 25, 34, 27, 36, 30, 23, 5, 16, 1, 14, 9, 18, 7, 12, 3].includes(rouletteResultNumber) ? 'text-red-500' : 'text-white'}`}>
-                                       {rouletteResultNumber}
-                                   </div>
-                               </div>
-                           )}
-                      </div>
-                  )}
-
-                  {/* --- TRIVIA ROYALE RENDER --- */}
-                  {activeGame === 'TRIVIA' && (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-4 relative z-10">
-                          <div className="absolute top-4 left-0 right-0 px-8 flex justify-center gap-4">
-                               {TRIVIA_CATEGORIES.map(cat => (
-                                   <div key={cat.id} className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all shadow-lg ${collectedBadges.includes(cat.id) ? `${cat.color} text-white border-white scale-110` : 'bg-black/40 border-white/10 text-slate-600 grayscale'}`}>
-                                       <cat.icon size={20} />
-                                   </div>
-                               ))}
-                          </div>
-                          <div className="relative mt-12 mb-8">
-                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 w-8 h-8 rotate-180">
-                                   <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[20px] border-b-white drop-shadow-md"></div>
-                               </div>
-                               <div className="w-64 h-64 md:w-80 md:h-80 rounded-full border-4 border-white shadow-[0_0_50px_rgba(255,255,255,0.2)] relative overflow-hidden transition-transform duration-[3000ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" 
-                                    style={{ 
-                                        transform: `rotate(${triviaRotation}deg)`, 
-                                        background: `conic-gradient(
-                                            ${TRIVIA_CATEGORIES[0].hex} 0deg 60deg, 
-                                            ${TRIVIA_CATEGORIES[5].hex} 60deg 120deg, 
-                                            ${TRIVIA_CATEGORIES[4].hex} 120deg 180deg, 
-                                            ${TRIVIA_CATEGORIES[3].hex} 180deg 240deg, 
-                                            ${TRIVIA_CATEGORIES[2].hex} 240deg 300deg, 
-                                            ${TRIVIA_CATEGORIES[1].hex} 300deg 360deg
-                                        )` 
-                                    }}>
-                                    {TRIVIA_CATEGORIES.map((cat, i) => {
-                                        // Icons need to be placed at center of segments
-                                        // Segments are 60deg. Center is 30, 90, 150...
-                                        // Because the gradient order is reversed visually (clockwise), we map carefully.
-                                        // Index 0 (Blue) is 0-60. Center 30.
-                                        const angle = (i * 60) + 30; // 30, 90, 150...
-                                        // BUT we reversed color order in conic gradient to match rotation logic?
-                                        // Let's stick to simple placement.
-                                        return (
-                                            <div key={cat.id} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none" style={{ transform: `rotate(${-angle}deg)` }}>
-                                                <div className="absolute top-8 left-1/2 -translate-x-1/2 text-white drop-shadow-md">
-                                                    <cat.icon size={24} style={{ transform: `rotate(${angle}deg)` }} />
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                               </div>
-                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full shadow-inner flex items-center justify-center border-4 border-slate-200">
-                                   <div className="font-bold text-black text-xs text-center leading-none">TRIVIA<br/>ROYALE</div>
-                               </div>
-                          </div>
-                      </div>
-                  )}
-
-                  {/* --- PLINKO RENDER --- */}
-                  {activeGame === 'PLINKO' && (
-                      <div className="absolute inset-0 z-10 w-full h-full aspect-square md:aspect-auto">
-                          <PlinkoGame active={plinkoTrigger} onFinish={onPlinkoResult} />
-                          <div className="absolute top-4 right-4 w-40 space-y-2 hidden md:block">
-                               {plinkoHistory.map((h, i) => (
-                                   <div key={i} className={`p-2 rounded text-center font-bold text-xs animate-deal flex justify-between px-4 border border-white/5 ${h >= 10 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : h < 1 ? 'bg-red-500/20 text-red-400' : 'bg-[#2f3543] text-slate-300'}`}>
-                                       <span>Payout</span>
-                                       <span>{h}x</span>
-                                   </div>
-                               ))}
-                          </div>
-                      </div>
-                  )}
-
-                  {/* --- KENO RENDER --- */}
-                  {activeGame === 'KENO' && (
-                      <div className="grid grid-cols-8 gap-1 md:gap-2 p-4 max-w-2xl relative z-10">
-                          {Array.from({length: 40}, (_, i) => i + 1).map(n => {
-                              const isSelected = kenoSelections.includes(n);
-                              const isHit = kenoDraw.includes(n);
-                              return (
-                                  <button key={n} onClick={() => toggleKenoNum(n)} className={`w-8 h-8 md:w-12 md:h-12 rounded-lg font-bold text-xs md:text-sm transition-all relative border shadow-lg flex items-center justify-center ${isHit && isSelected ? 'bg-[#D4C28A] text-black scale-110 shadow-[0_0_15px_#D4C28A] z-10 border-[#D4C28A]' : isHit ? 'bg-[#B23A48] text-white border-[#B23A48]' : isSelected ? 'bg-white text-black border-white' : 'bg-[#24282e]/80 text-slate-300 hover:bg-[#2f3543] border-white/10 backdrop-blur-sm'}`}>
-                                      {n}
-                                      {isSelected && <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#1C8C6E] rounded-full"></div>}
-                                  </button>
-                              )
-                          })}
-                      </div>
-                  )}
-
-                  {/* --- LIMBO RENDER --- */}
-                  {activeGame === 'LIMBO' && (
-                      <div className="text-center relative z-10">
-                          <div className={`text-6xl md:text-9xl font-mono font-bold mb-4 transition-colors duration-100 drop-shadow-2xl ${limboResult && limboResult >= limboTarget ? 'text-[#1C8C6E] drop-shadow-[0_0_35px_rgba(28,140,110,0.8)]' : crashed || (limboResult && limboResult < limboTarget) ? 'text-[#B23A48]' : 'text-white'}`}>
-                              {limboResult ? limboResult.toFixed(2) : '0.00'}x
-                          </div>
-                          <div className="text-slate-200 font-mono tracking-widest uppercase bg-black/60 inline-block px-4 py-2 rounded-lg border border-white/10 backdrop-blur-md shadow-lg">Target: {limboTarget.toFixed(2)}x</div>
-                      </div>
-                  )}
-
-                  {/* --- CRASH RENDER --- */}
-                  {activeGame === 'CRASH' && (
-                      <div className="w-full h-full relative flex items-end justify-center overflow-hidden bg-transparent">
-                          <div className={`absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] ${isPlaying ? 'animate-[pulse_1s_infinite]' : ''}`}></div>
-                          <div className={`absolute top-1/3 text-6xl md:text-8xl font-mono font-bold z-20 ${crashed ? 'text-[#B23A48]' : 'text-white'}`}>
-                              {crashMultiplier.toFixed(2)}x
-                          </div>
-                          {crashed && <div className="absolute top-[45%] text-xl text-[#B23A48] font-bold tracking-widest uppercase">CRASHED</div>}
-                           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" preserveAspectRatio="none">
-                              <defs>
-                                <linearGradient id="crashGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#D4C28A" stopOpacity="0.2"/>
-                                  <stop offset="100%" stopColor="#D4C28A" stopOpacity="0"/>
-                                </linearGradient>
-                              </defs>
-                              <path d={`M-50,600 Q ${isPlaying ? '400,550' : '400,600'} 800,${isPlaying ? '100' : '600'} L 800,600 L -50,600 Z`} fill="url(#crashGradient)" />
-                              <path d={`M-50,600 Q ${isPlaying ? '400,550' : '400,600'} 800,${isPlaying ? '100' : '600'}`} stroke={crashed ? '#B23A48' : '#D4C28A'} strokeWidth="4" fill="none" className="transition-all duration-1000 ease-linear" />
-                          </svg>
-                          <div className={`absolute z-30 transition-all duration-1000 ease-linear ${isPlaying ? 'bottom-[70%] left-[65%]' : 'bottom-0 left-0'} ${crashed ? 'hidden' : 'block'}`}>
-                               <Rocket size={48} className="text-[#D4C28A] fill-[#D4C28A] rotate-45 drop-shadow-[0_0_15px_#D4C28A]" />
-                               <div className="absolute top-10 -left-4 w-4 h-12 bg-orange-500 blur-md rounded-full animate-pulse"></div>
-                          </div>
-                      </div>
-                  )}
-
-                  {/* --- MINES RENDER --- */}
-                  {activeGame === 'MINES' && (
-                      <div className="grid grid-cols-5 gap-2 md:gap-3 p-4 bg-[#15171a]/40 backdrop-blur-md rounded-xl border border-white/5 relative z-10">
-                          {minesGrid.map((val, idx) => (
-                              <button key={idx} disabled={!isPlaying || minesRevealed[idx]} onClick={() => clickMine(idx)} className={`w-12 h-12 md:w-16 md:h-16 rounded-lg transition-all shadow-lg flex items-center justify-center text-3xl relative overflow-hidden ${minesRevealed[idx] ? (val === 'bomb' ? 'bg-[#B23A48] scale-95 shadow-none border border-red-400' : 'bg-[#1C8C6E] scale-95 shadow-none border border-emerald-400') : 'bg-[#24282e]/80 hover:bg-[#2f3543] border-b-4 border-black/30 active:border-b-0 active:translate-y-1'}`}>
-                                  {minesRevealed[idx] ? (val === 'bomb' ? <Bomb size={24} className="text-white animate-pulse md:w-8 md:h-8" /> : <Diamond size={24} className="text-white animate-[bounce_0.5s] md:w-8 md:h-8" />) : <div className="w-2 h-2 rounded-full bg-white/10"></div>}
-                              </button>
-                          ))}
-                      </div>
-                  )}
-
-                  {/* --- DICE RENDER --- */}
-                  {activeGame === 'DICE' && (
-                       <div className="w-full max-w-2xl px-6 md:px-12 text-center relative z-10">
-                           <div className="flex justify-between text-xl md:text-2xl font-bold mb-8 font-mono">
-                                <span className="text-slate-500">0</span>
-                                <span className="text-white drop-shadow-md">50</span>
-                                <span className="text-slate-500">100</span>
-                           </div>
-                           <div className="h-6 bg-[#1a1d21]/80 backdrop-blur rounded-full relative overflow-visible border border-white/10 shadow-xl">
-                                <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-white/10 to-white/50 rounded-l-full transition-all duration-300" style={{ width: `${diceValue}%` }}></div>
-                                <div className="absolute -top-1 w-4 h-8 bg-white rounded shadow cursor-pointer hover:scale-110 transition-transform" style={{ left: `${diceValue}%` }}></div>
-                                {diceResult !== null && <div className="absolute -top-2 w-1 h-10 bg-[#D4C28A] z-10 shadow-[0_0_15px_#D4C28A] transition-all duration-500 ease-out" style={{ left: `${diceResult}%` }}></div>}
-                           </div>
-                           {diceResult !== null && <div className={`mt-12 text-5xl md:text-6xl font-bold animate-deal drop-shadow-2xl ${diceResult <= diceValue ? 'text-[#1C8C6E]' : 'text-[#B23A48]'}`}>{diceResult.toFixed(2)}</div>}
-                       </div>
-                  )}
-
-              </div>
-          </div>
-          
-            {/* TRIVIA MODAL */}
-            {showTriviaModal && triviaQ && triviaCategory && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#1C1C1E] border border-white/10 p-8 rounded-2xl max-w-md w-full relative shadow-2xl animate-fade-in-up">
-                         <div className={`absolute top-0 left-0 w-full h-3 rounded-t-2xl ${triviaCategory.color}`}></div>
-                         <div className="flex justify-center -mt-12 mb-4">
-                             <div className={`w-20 h-20 rounded-full border-4 border-[#1C1C1E] flex items-center justify-center shadow-lg ${triviaCategory.color} text-white`}>
-                                 <triviaCategory.icon size={36} />
-                             </div>
                          </div>
-                         <h3 className={`text-center text-xl font-bold mb-2 uppercase tracking-widest ${triviaCategory.text}`}>
-                             {triviaCategory.name}
-                         </h3>
-                         <p className="text-lg text-slate-200 mb-8 font-medium text-center">{triviaQ.q}</p>
-                         <div className="space-y-3">
-                             {triviaQ.options.map((opt: string, idx: number) => (
-                                 <button key={idx} onClick={() => answerTrivia(idx)} disabled={triviaResult !== null} className={`w-full p-4 rounded-xl text-left transition-all border ${triviaResult === null ? 'bg-white/5 border-white/10 hover:bg-white/10' : idx === triviaQ.ans ? 'bg-green-500/20 border-green-500 text-green-400' : triviaResult === 'wrong' && idx !== triviaQ.ans ? 'bg-red-500/20 border-red-500 text-red-400 opacity-50' : 'opacity-50'}`}>
-                                     <div className="flex justify-between items-center">
-                                        <span>{opt}</span>
-                                        {triviaResult === 'correct' && idx === triviaQ.ans && <CheckCircle size={20}/>}
+                         {/* Pointer */}
+                         <div className="absolute top-[15%] md:top-[10%] z-30">
+                             <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-white drop-shadow-lg"></div>
+                         </div>
+
+                         {/* Collection */}
+                         <div className="mt-12 flex gap-4 bg-black/40 p-4 rounded-2xl backdrop-blur-sm border border-white/10">
+                             {TRIVIA_CATEGORIES.map(cat => {
+                                 const collected = collectedBadges.includes(cat.id);
+                                 return (
+                                     <div key={cat.id} className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${collected ? `${cat.color} border-white` : 'bg-white/5 border-white/10 grayscale opacity-50'}`}>
+                                         <cat.icon size={18} className="text-white" />
                                      </div>
+                                 )
+                             })}
+                         </div>
+
+                         {/* Question Modal */}
+                         {showTriviaModal && triviaQ && triviaCategory && (
+                             <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+                                 <div className="bg-[#1a1d21] border border-[#D4C28A] p-8 rounded-2xl max-w-lg w-full shadow-2xl">
+                                     <div className={`text-xs font-bold uppercase tracking-widest mb-4 ${triviaCategory.text}`}>{triviaCategory.name}</div>
+                                     <h3 className="text-2xl font-bold text-white mb-8 leading-relaxed">{triviaQ.q}</h3>
+                                     <div className="grid grid-cols-1 gap-3">
+                                         {triviaQ.options.map((opt: string, i: number) => (
+                                             <button 
+                                                key={i}
+                                                onClick={() => answerTrivia(i)}
+                                                className={`p-4 rounded-xl text-left font-bold transition-all border ${
+                                                    triviaResult 
+                                                    ? i === triviaQ.ans 
+                                                        ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                        : triviaResult === 'wrong' 
+                                                            ? 'bg-red-500/20 border-red-500 text-red-400' 
+                                                            : 'bg-white/5 border-white/10 opacity-50'
+                                                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-[#D4C28A]'
+                                                }`}
+                                             >
+                                                 {opt}
+                                             </button>
+                                         ))}
+                                     </div>
+                                 </div>
+                             </div>
+                         )}
+                     </div>
+                 )}
+
+                 {/* BLACKJACK V2 IMPROVED */}
+                 {activeGame === 'BLACKJACK' && (
+                     <div className="w-full h-full relative bg-[#1e293b] flex flex-col p-4 overflow-hidden">
+                        {/* Background */}
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-900/40 via-[#0f172a] to-[#0f172a] pointer-events-none"></div>
+
+                        {/* Results Panel - Fixed Top Center, Semitransparent */}
+                        {bjRoundResults.length > 0 && (
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-md border border-[#D4C28A]/50 px-6 py-3 rounded-xl shadow-2xl text-center min-w-[280px] animate-fade-in-down pointer-events-none">
+                                <h3 className="text-[#D4C28A] font-bold uppercase tracking-widest text-[10px] mb-2">Resumen de Ronda</h3>
+                                <div className="space-y-1">
+                                    {bjRoundResults.map((line, i) => (
+                                        <div key={i} className={`text-xs md:text-sm font-bold ${
+                                            line.includes('GANASTE') ? 'text-[#1C8C6E]' : 
+                                            line.includes('PERDISTE') || line.includes('BUST') ? 'text-[#B23A48]' : 'text-white'
+                                        }`}>
+                                            {line}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Dealer Area - Pushed down slightly */}
+                        <div className="flex-none h-1/3 w-full flex flex-col items-center justify-center pt-12 z-10 relative">
+                             <div className="flex flex-col items-center mb-4">
+                                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 border border-slate-700 px-3 py-0.5 rounded-full bg-black/40">
+                                    DEALER
+                                 </div>
+                                 <div className={`px-3 py-1 rounded text-white font-mono text-sm border border-white/10 ${bjState === 'ENDED' ? 'bg-black/80' : 'bg-transparent'}`}>
+                                     {bjState === 'ENDED' || bjState === 'DEALER_TURN' ? getBjValue(dealerHand) : '?'}
+                                 </div>
+                             </div>
+                             {/* Cards less overlapped */}
+                             <div className="flex -space-x-4 relative"> 
+                                 {dealerHand.map((c, i) => (
+                                     <div key={i} className="transition-all duration-500 shadow-xl" style={{ zIndex: i }}>
+                                         <Card suit={c.suit} value={c.value} color={c.color} hidden={i === 1 && bjState !== 'ENDED' && bjState !== 'DEALER_TURN'} />
+                                     </div>
+                                 ))}
+                             </div>
+                        </div>
+
+                        {/* Players Area - Bottom Row */}
+                        <div className="flex-1 w-full flex items-end justify-center gap-2 md:gap-6 pb-6 z-10 w-full max-w-7xl mx-auto px-2">
+                            {bjSeats.map((seat, idx) => (
+                                <div key={seat.id} className={`relative flex flex-col items-center justify-end transition-all duration-300 rounded-xl p-2 min-w-[90px] md:min-w-[130px]
+                                    ${activeSeatIndex === idx 
+                                        ? 'bg-[#D4C28A]/5 border-t-2 border-[#D4C28A] shadow-[0_-10px_20px_rgba(212,194,138,0.1)]' 
+                                        : 'opacity-75 border-t-2 border-transparent'}`}>
+                                    
+                                    {/* Chat Bubble */}
+                                    {seat.chatMessage && (
+                                        <div className="absolute -top-14 bg-white text-black text-[10px] py-1 px-3 rounded-xl rounded-bl-none shadow-xl animate-fade-in whitespace-nowrap z-[60] font-bold border border-slate-200">
+                                            {seat.chatMessage}
+                                        </div>
+                                    )}
+
+                                    {/* Status Text (Floating above cards) */}
+                                    <div className="absolute -top-6 w-full flex justify-center z-[50]">
+                                        {seat.status === 'WIN' && <span className="bg-green-500 text-black text-[10px] font-black px-2 py-0.5 rounded shadow-lg animate-bounce">GANÓ</span>}
+                                        {seat.status === 'BLACKJACK' && <span className="bg-[#D4C28A] text-black text-[10px] font-black px-2 py-0.5 rounded shadow-lg animate-pulse">BJ</span>}
+                                        {seat.status === 'BUST' && <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-lg">BUST</span>}
+                                        {seat.status === 'PUSH' && <span className="bg-slate-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-lg">EMPATE</span>}
+                                        {seat.status === 'LOSE' && <span className="text-slate-500 font-bold text-xs">PERDIÓ</span>}
+                                    </div>
+
+                                    {/* Cards */}
+                                    <div className="flex -space-x-6 mb-3 h-24 md:h-28 relative items-center justify-center w-full">
+                                        {seat.hand?.map((c: any, i: number) => (
+                                            <div key={i} className="transform transition-transform hover:-translate-y-2 origin-bottom shadow-lg" style={{ zIndex: i }}>
+                                                <Card suit={c.suit} value={c.value} color={c.color} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Player Stats */}
+                                    <div className={`w-full bg-[#0B0B0C]/80 rounded-lg p-2 border ${activeSeatIndex === idx ? 'border-[#D4C28A]' : 'border-white/10'} flex flex-col items-center relative z-20`}>
+                                        <div className="flex items-center gap-1 mb-1 w-full justify-center">
+                                             {seat.isUser && <div className="w-1.5 h-1.5 bg-[#1C8C6E] rounded-full animate-pulse"></div>}
+                                             <span className={`text-[10px] font-bold truncate max-w-[80px] ${seat.isUser ? 'text-[#D4C28A]' : 'text-slate-300'}`}>{seat.name}</span>
+                                        </div>
+                                        <div className="text-xs font-mono font-bold text-white">
+                                            {getBjValue(seat.hand)}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                     </div>
+                 )}
+
+                 {/* PLINKO */}
+                 {activeGame === 'PLINKO' && (
+                     <div className="w-full h-full relative bg-gradient-to-b from-blue-900 to-black">
+                         <PlinkoGame triggerDrop={plinkoDropCount} onFinish={onPlinkoResult} />
+                         <div className="absolute top-4 right-4 flex flex-col gap-2">
+                             {plinkoHistory.map((h, i) => (
+                                 <div key={i} className={`px-3 py-1 rounded-full font-bold text-xs animate-fade-in ${h > 1 ? 'bg-green-500 text-black' : 'bg-slate-700 text-slate-400'}`}>
+                                     {h}x
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+                 )}
+
+                 {/* ROULETTE */}
+                 {activeGame === 'ROULETTE' && (
+                     <div className="w-full h-full flex flex-col items-center justify-center bg-[#064e3b] relative overflow-hidden">
+                          {/* Wheel */}
+                          <div className={`w-80 h-80 rounded-full border-8 border-[#D4C28A] shadow-2xl relative transition-transform duration-[4000ms] cubic-bezier(0.1, 0.8, 0.1, 1)`}
+                               style={{ transform: `rotate(${rouletteAngle}deg)`, background: generateWheelGradient() }}>
+                                <div className="absolute inset-0 rounded-full border-[30px] border-black/20"></div>
+                                <div className="absolute inset-[35%] bg-[#064e3b] rounded-full border-4 border-[#D4C28A] flex items-center justify-center shadow-inner">
+                                     <div className="w-4 h-4 rounded-full bg-[#D4C28A]"></div>
+                                </div>
+                          </div>
+                          {/* Marker */}
+                          <div className="absolute top-[calc(50%-170px)] z-20">
+                               <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[20px] border-t-white drop-shadow-lg"></div>
+                          </div>
+
+                          {/* Result Display */}
+                          <div className="mt-12 h-16 flex items-center justify-center">
+                              {rouletteResultNumber !== null && (
+                                  <div className={`text-5xl font-mono font-bold animate-jackpot ${
+                                      rouletteResultNumber === 0 ? 'text-green-500' : redNumbers.includes(rouletteResultNumber) ? 'text-red-500' : 'text-white'
+                                  }`}>
+                                      {rouletteResultNumber}
+                                  </div>
+                              )}
+                          </div>
+                     </div>
+                 )}
+                 
+                 {/* CRASH */}
+                 {activeGame === 'CRASH' && (
+                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 relative">
+                         <div className="absolute inset-0 bg-gradient-to-b from-black via-slate-900 to-black opacity-80"></div>
+                         <div className="relative z-10 flex flex-col items-center">
+                              {crashed ? (
+                                  <div className="text-6xl md:text-8xl font-black text-red-500 animate-pulse">CRASHED</div>
+                              ) : (
+                                  <div className="text-6xl md:text-9xl font-mono font-bold text-white tracking-tighter">
+                                      {crashMultiplier.toFixed(2)}x
+                                  </div>
+                              )}
+                              <div className="mt-8">
+                                  {!crashed && isPlaying && <Rocket size={48} className="text-orange-500 animate-bounce" />}
+                              </div>
+                         </div>
+                     </div>
+                 )}
+
+                 {/* SLOTS */}
+                 {activeGame === 'SLOTS' && (
+                     <div className="w-full h-full flex items-center justify-center bg-[#2e1065] relative">
+                         <div className="bg-black p-8 rounded-3xl border-4 border-fuchsia-600 shadow-[0_0_100px_rgba(192,38,211,0.5)] flex gap-4">
+                             {slotsReels.map((sym, i) => (
+                                 <div key={i} className="w-24 h-36 bg-white rounded-xl border-4 border-slate-300 flex items-center justify-center text-6xl overflow-hidden relative">
+                                     <div className={`transition-all duration-100 ${slotsSpinning ? 'blur-sm translate-y-2' : ''}`}>
+                                        {slotsSpinning ? '?' : sym}
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+                 )}
+
+                 {/* MINES */}
+                 {activeGame === 'MINES' && (
+                     <div className="w-full h-full flex items-center justify-center bg-[#1e293b]">
+                         <div className="grid grid-cols-5 gap-2 md:gap-3 p-4 bg-black/40 rounded-2xl border border-white/10">
+                             {minesGrid.map((cell, i) => (
+                                 <button
+                                    key={i}
+                                    disabled={!isPlaying || minesRevealed[i]}
+                                    onClick={() => clickMine(i)}
+                                    className={`w-12 h-12 md:w-16 md:h-16 rounded-lg transition-all flex items-center justify-center text-2xl
+                                    ${minesRevealed[i] 
+                                        ? cell === 'bomb' ? 'bg-red-500 shadow-inner' : 'bg-emerald-600 shadow-inner'
+                                        : 'bg-slate-700 hover:bg-slate-600'}`}
+                                 >
+                                     {minesRevealed[i] && (cell === 'bomb' ? <Bomb /> : <Diamond className="text-white" />)}
                                  </button>
                              ))}
                          </div>
+                     </div>
+                 )}
+
+                 {/* OTHER GAMES PLACEHOLDERS (Standardize UI) */}
+                 {(['DICE', 'KENO', 'LIMBO', 'ROAD'] as const).includes(activeGame as any) && (
+                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
+                         {activeGame === 'DICE' && (
+                             <div className="w-full max-w-md bg-black/50 p-8 rounded-2xl border border-white/10">
+                                 <div className="flex justify-between text-white font-mono text-xl mb-4">
+                                    <span>0</span><span>100</span>
+                                 </div>
+                                 <input 
+                                    type="range" min="2" max="98" 
+                                    value={diceValue} onChange={(e) => setDiceValue(Number(e.target.value))}
+                                    className="w-full accent-[#D4C28A] h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                 />
+                                 <div className="text-center mt-4 text-[#D4C28A] font-bold text-2xl">Target: Under {diceValue}</div>
+                             </div>
+                         )}
+                         {activeGame === 'LIMBO' && (
+                             <div className="text-center">
+                                 <div className="text-9xl font-mono font-bold text-white mb-4">
+                                     {limboResult ? limboResult.toFixed(2) : '0.00'}x
+                                 </div>
+                                 <div className="text-slate-400">Target: {limboTarget}x</div>
+                             </div>
+                         )}
+                         {activeGame === 'KENO' && (
+                             <div className="grid grid-cols-8 gap-2 p-4">
+                                 {Array.from({length: 40}, (_,i) => i+1).map(n => (
+                                     <button 
+                                        key={n}
+                                        onClick={() => toggleKenoNum(n)}
+                                        className={`w-10 h-10 rounded-md font-bold transition-all ${
+                                            kenoDraw.includes(n) ? 'bg-white text-black scale-110' :
+                                            kenoSelections.includes(n) ? 'bg-[#D4C28A] text-black' : 'bg-slate-800 text-slate-400'
+                                        }`}
+                                     >
+                                         {n}
+                                     </button>
+                                 ))}
+                             </div>
+                         )}
+                     </div>
+                 )}
+
+            </div>
+
+            {/* Sidebar Controls (Universal) */}
+            <div className="w-full md:w-80 bg-[#141417] border-t md:border-t-0 md:border-l border-white/5 p-6 flex flex-col z-20">
+                <div className="flex-1 space-y-6">
+                    {/* Bet Amount */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto de Apuesta</label>
+                        <div className="relative">
+                            <input 
+                                type="number" 
+                                value={currentBet}
+                                onChange={(e) => setCurrentBet(Math.max(0, Number(e.target.value)))}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono focus:border-[#D4C28A] outline-none"
+                            />
+                            <div className="absolute right-2 top-2 flex gap-1">
+                                <button onClick={() => setCurrentBet(b => b/2)} className="px-2 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-white">½</button>
+                                <button onClick={() => setCurrentBet(b => b*2)} className="px-2 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-white">2×</button>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Game Specific Controls */}
+                    {activeGame === 'ROULETTE' && (
+                        <div className="grid grid-cols-3 gap-2">
+                            <button onClick={() => setRouletteBetType('RED')} className={`py-3 rounded-lg font-bold transition-all ${rouletteBetType === 'RED' ? 'bg-red-600 text-white ring-2 ring-white' : 'bg-red-900/50 text-red-200'}`}>Rojo (2x)</button>
+                            <button onClick={() => setRouletteBetType('GREEN')} className={`py-3 rounded-lg font-bold transition-all ${rouletteBetType === 'GREEN' ? 'bg-green-600 text-white ring-2 ring-white' : 'bg-green-900/50 text-green-200'}`}>0 (36x)</button>
+                            <button onClick={() => setRouletteBetType('BLACK')} className={`py-3 rounded-lg font-bold transition-all ${rouletteBetType === 'BLACK' ? 'bg-slate-800 text-white ring-2 ring-white' : 'bg-slate-900 text-slate-400'}`}>Negro (2x)</button>
+                        </div>
+                    )}
+
+                    {activeGame === 'LIMBO' && (
+                        <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-500 uppercase">Target Multiplier</label>
+                             <input type="number" value={limboTarget} onChange={e => setLimboTarget(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono" />
+                        </div>
+                    )}
+                    
+                    {/* Action Button */}
+                    <button 
+                        disabled={(activeGame === 'BLACKJACK' && bjState === 'PLAYING') || (activeGame === 'CRASH' && isPlaying) || (activeGame === 'MINES' && isPlaying) || rouletteSpinning || slotsSpinning}
+                        onClick={() => {
+                            if (activeGame === 'TRIVIA') spinTriviaWheel();
+                            else if (activeGame === 'BLACKJACK') startBlackjack();
+                            else if (activeGame === 'PLINKO') dropPlinko();
+                            else if (activeGame === 'ROULETTE') spinRoulette();
+                            else if (activeGame === 'SLOTS') spinSlots();
+                            else if (activeGame === 'CRASH') startCrash();
+                            else if (activeGame === 'MINES') startMines();
+                            else if (activeGame === 'DICE') rollDice();
+                            else if (activeGame === 'LIMBO') playLimbo();
+                            else if (activeGame === 'KENO') playKeno();
+                        }}
+                        className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02]
+                        ${(activeGame === 'BLACKJACK' && bjState === 'PLAYING') ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-[#1C8C6E] text-white hover:bg-[#156b54]'}`}
+                    >
+                        {activeGame === 'PLINKO' ? 'SOLTAR BOLA' : 
+                         activeGame === 'TRIVIA' ? 'GIRAR RUEDA' :
+                         activeGame === 'BLACKJACK' ? (bjState === 'IDLE' || bjState === 'ENDED' ? 'REPARTIR' : 'JUGANDO...') :
+                         'APOSTAR'}
+                    </button>
+
+                    {/* In-Game Actions */}
+                    {activeGame === 'BLACKJACK' && bjState === 'PLAYING' && bjSeats[activeSeatIndex]?.isUser && (
+                        <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                            <button onClick={hitBj} className="py-3 bg-blue-600 rounded-xl font-bold text-white hover:bg-blue-500">PEDIR (HIT)</button>
+                            <button onClick={standBj} className="py-3 bg-red-600 rounded-xl font-bold text-white hover:bg-red-500">PLANTARSE</button>
+                        </div>
+                    )}
+                    
+                    {activeGame === 'CRASH' && isPlaying && !crashed && (
+                        <button onClick={cashOutCrash} className="w-full py-4 bg-orange-500 rounded-xl font-bold text-black hover:bg-orange-400 animate-pulse">
+                            RETIRARSE ({(currentBet * crashMultiplier).toFixed(2)})
+                        </button>
+                    )}
+
+                    {activeGame === 'MINES' && isPlaying && minesRevealed.some(Boolean) && (
+                         <button onClick={cashOutMines} className="w-full py-4 bg-orange-500 rounded-xl font-bold text-black hover:bg-orange-400">
+                             COBRAR
+                         </button>
+                    )}
                 </div>
-            )}
-      </div>
+                
+                {/* Balance Footer */}
+                <div className="mt-6 pt-6 border-t border-white/5">
+                     <div className="flex justify-between items-center text-sm mb-2">
+                         <span className="text-slate-500">Saldo Disponible</span>
+                         <span className="text-white font-mono">{formatCurrency(balance)}</span>
+                     </div>
+                     {notification && (
+                         <div className={`p-3 rounded-lg text-center font-bold text-sm animate-fade-in ${notification.type === 'win' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                             {notification.msg}
+                         </div>
+                     )}
+                </div>
+            </div>
+        </div>
+    </div>
   );
 };
